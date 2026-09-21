@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useMemo, Suspense } from 'react';
 import * as THREE from 'three';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment, useGLTF, Center } from '@react-three/drei';
-import { AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
 
 // --- 3D ENGINE MODEL ---
 function EngineModel({ faultType, autoRotate }) {
@@ -61,11 +61,10 @@ export default function GCSDashboard() {
   const [isHotWeather, setIsHotWeather] = useState(false);
   const [autoRotate, setAutoRotate] = useState(false);
   
-  // LIVE HEARTBEAT TICKER (Makes the charts move!)
+  // LIVE HEARTBEAT TICKER (Forces re-renders and sliding time)
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    // Freeze the UI ticking if comms are jammed
     if (faultType === 'jamming') return;
     const timer = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(timer);
@@ -75,7 +74,7 @@ export default function GCSDashboard() {
   const isSensorFailed = faultType === 'snap';
   const isJammed = faultType === 'jamming';
   
-  const tempOffset = (isHighAltitude ? 15 : 0) + (isHotWeather ? 25 : 0); 
+  const tempOffset = (isHighAltitude ? 5 : 0) + (isHotWeather ? 10 : 0); 
   
   let rul = "1500:00";
   let confidence = "98.4%";
@@ -84,30 +83,37 @@ export default function GCSDashboard() {
   if (faultType === 'cooling') { rul = "0008:00"; confidence = "32.1%"; }
   if (faultType === 'jamming') { rul = "--:--"; confidence = "--%"; }
 
-  // DYNAMIC TELEMETRY GENERATION (Scrolling Charts)
+  // FORMAT SHIFTING TIME FOR X-AXIS SCROLLING
+  const formatTime = (t) => {
+    const mins = Math.floor(t / 60) % 60;
+    const secs = t % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // DYNAMIC TELEMETRY GENERATION (Aero-Diesel Physics)
   const telemetryData = useMemo(() => {
     return [4, 3, 2, 1, 0].map((offset) => {
-        const time = `T-${offset}`;
-        const historicalTick = tick - offset;
+        const historicalTick = tick > offset ? tick - offset : 0;
+        const timeLabel = formatTime(historicalTick);
         
-        // Mathematical noise generator for realism
-        const jitter = Math.sin(historicalTick) * 1.5;
+        const jitter = Math.sin(historicalTick) * 0.8;
         const egtJitter = Math.cos(historicalTick) * 3;
 
-        let chtVal = 180 + tempOffset + jitter;
-        let egtVal = 650 + tempOffset + egtJitter;
+        // Base values for Liquid-Cooled Diesel
+        let chtVal = 85 + tempOffset + jitter;
+        let egtVal = 710 + tempOffset + egtJitter;
 
         if (faultType === 'fracture') {
-            chtVal = 285 + tempOffset + jitter;
-            egtVal = 890 + tempOffset + egtJitter;
+            chtVal = 92 + tempOffset + jitter;
+            egtVal = 820 + tempOffset + egtJitter;
         } else if (faultType === 'cooling') {
-            chtVal = 310 + tempOffset + (jitter * 2);
-            egtVal = 920 + tempOffset + (egtJitter * 2);
+            chtVal = 115 + tempOffset + (jitter * 2); // Exceeds 105C Redline
+            egtVal = 880 + tempOffset + (egtJitter * 2); // Exceeds 850C Redline
         } else if (faultType === 'snap') {
-            chtVal = 0; // sensor snapped
+            chtVal = 0; 
         }
 
-        return { time, cht: Math.round(chtVal), egt: Math.round(egtVal) };
+        return { time: timeLabel, cht: Math.round(chtVal), egt: Math.round(egtVal) };
     });
   }, [tick, faultType, tempOffset]);
 
@@ -116,13 +122,13 @@ export default function GCSDashboard() {
     const base = [20, 35, 15, 25, 40, 30, 10];
     return base.map((amp, i) => {
         let currentAmp = amp + (Math.random() * 4 - 2);
-        if (faultType === 'fracture' && i === 3) currentAmp = 95 + (Math.random() * 5);
-        if (faultType === 'fracture' && i === 5) currentAmp = 80 + (Math.random() * 5);
+        if (faultType === 'fracture' && i === 3) currentAmp = 95 + (Math.random() * 5); // 4kHz spike
+        if (faultType === 'fracture' && i === 5) currentAmp = 80 + (Math.random() * 5); // 6kHz harmonic
         return { hz: `${i + 1}k`, amp: Math.max(0, currentAmp) };
     });
   }, [tick, faultType]);
 
-  // LIVE STATS
+  // LIVE STATS (Aero Diesel RPM)
   const liveRPM = isJammed ? '---' : (isOverheating ? 1840 + (tick % 4) : 2552 + (tick % 5 - 2));
   const liveOil = isJammed ? '--' : (53.8 + Math.sin(tick) * 0.1).toFixed(1);
 
@@ -147,21 +153,21 @@ export default function GCSDashboard() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-emerald-500 p-4 font-mono flex flex-col uppercase selection:bg-emerald-900 overflow-hidden relative">
       
-      {/* THE FIXED, UN-BLOCKABLE JAMMING OVERLAY */}
+      {/* FIXED JAMMING OVERLAY WITH RESTART BUTTON */}
       {isJammed && (
         <div className="absolute inset-0 z-[100] bg-[#0a0a0a]/90 backdrop-blur-md flex flex-col items-center justify-center border-8 border-red-900/80 pointer-events-auto">
           <span className="text-red-500 text-4xl font-black tracking-widest animate-pulse mb-4 text-center drop-shadow-[0_0_15px_#ef4444]">
             SATCOM DENIAL ATTACK DETECTED
           </span>
           <span className="text-slate-300 text-sm tracking-widest mb-12 text-center">
-            GCS TELEMETRY LINK SEVERED. EDGE AUTONOMY ENGAGED.
+            GCS TELEMETRY LINK SEVERED. EDGE AUTONOMY ENGAGED. LOGGING BUFFERED.
           </span>
           
           <button 
             onClick={resetSystem} 
             className="bg-red-950/80 border-2 border-red-500 text-red-100 hover:bg-red-600 hover:text-white py-4 px-10 text-sm font-bold tracking-widest transition-all shadow-[0_0_25px_#ef4444] rounded cursor-pointer"
           >
-            ↻ RESTORE SATELLITE UPLINK
+            ↻ RESTORE SATELLITE UPLINK & RE-SYNC
           </button>
         </div>
       )}
@@ -199,7 +205,7 @@ export default function GCSDashboard() {
           <div className="text-[9px] tracking-widest text-slate-500 mt-1 flex justify-between w-full items-center">
             <span>PHYSICS-INFORMED ENSEMBLE</span>
             <div className={`flex items-center gap-2 ${isJammed ? 'text-red-500 font-bold' : 'text-emerald-500'}`}>
-              <span className={isJammed ? '' : 'animate-pulse'}>((•))</span> UPLINK: {isJammed ? '0.0 kbps' : (faultType !== 'none' ? '15.0 kbps' : '0.5 kbps')}
+              <span className={isJammed ? '' : 'animate-pulse'}>((•))</span> UPLINK: {isJammed ? '0.0 kbps' : (faultType !== 'none' ? '15.0 kbps' : '1.0 Hz')}
             </div>
           </div>
         </div>
@@ -212,7 +218,7 @@ export default function GCSDashboard() {
         <div className="col-span-3 bg-[#0d0d0d] border border-emerald-900/30 rounded relative flex flex-col overflow-hidden h-[580px]">
           <div className="absolute top-4 left-4 right-4 z-10 flex justify-between text-[9px] tracking-widest text-emerald-700 border-b border-emerald-900/40 pb-2 font-bold">
             <span>DIGITAL TWIN VISUALIZER</span>
-            <span className={isJammed ? 'text-red-500' : 'text-emerald-500'}>{isJammed ? 'OFFLINE' : 'LIVE 1 Hz'}</span>
+            <span className={isJammed ? 'text-red-500' : 'text-emerald-500'}>{isJammed ? 'OFFLINE' : 'LIVE'}</span>
           </div>
           
           <div className="absolute bottom-16 left-4 z-20">
@@ -245,8 +251,8 @@ export default function GCSDashboard() {
               <span className={`text-sm font-bold ${isJammed ? 'text-slate-700' : (faultType === 'fracture' ? 'text-red-500' : 'text-emerald-400')}`}>{isJammed ? '---' : (faultType === 'fracture' ? '4000' : '85')}</span>
             </div>
             <div className="p-2 flex flex-col gap-1">
-              <span>OIL</span>
-              <span className={`text-sm font-bold ${isJammed ? 'text-slate-700' : 'text-emerald-400'}`}>{liveOil}</span>
+              <span>OIL (BAR)</span>
+              <span className={`text-sm font-bold ${isJammed ? 'text-slate-700' : 'text-emerald-400'}`}>{isJammed ? '--' : '4.2'}</span>
             </div>
             <div className="p-2 flex flex-col gap-1">
               <span>Fe PPM</span>
@@ -259,33 +265,41 @@ export default function GCSDashboard() {
         <div className="col-span-3 bg-[#0d0d0d] border border-emerald-900/30 rounded p-3 h-[580px] flex flex-col gap-3 relative">
           <div className="text-[10px] font-bold text-emerald-700 tracking-widest pb-2 border-b border-emerald-900/40 flex justify-between">
             <span>LIVE EDGE TELEMETRY</span>
-            <span className="text-emerald-900">UPDATING...</span>
+            <span className="text-emerald-900">STREAMING...</span>
           </div>
           
           <div className="flex-1 border border-emerald-900/20 bg-emerald-950/10 rounded p-2 flex flex-col relative">
-            <span className="text-[9px] text-emerald-600 mb-1">CYLINDER HEAD TEMP (CHT) - °C</span>
+            <div className="flex justify-between mb-1">
+              <span className="text-[9px] text-emerald-600">COOLANT/CHT (°C)</span>
+              <span className="text-[7px] text-red-500/70">REDLINE: 105°C</span>
+            </div>
             {isSensorFailed && (
               <div className="absolute inset-0 bg-[#0a0a0a]/90 flex items-center justify-center p-2 text-yellow-500 text-[10px] text-center font-bold tracking-widest z-10 border border-yellow-900/50">
                 SENSOR FAULT DETECTED (0.00°C)
               </div>
             )}
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={telemetryData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+              <LineChart data={telemetryData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="2 2" stroke="#064e3b" opacity={0.3} vertical={false} />
-                <XAxis dataKey="time" stroke="#064e3b" fontSize={8} tickLine={false} axisLine={false} />
-                <YAxis domain={[150, 350]} stroke="#064e3b" fontSize={8} tickLine={false} axisLine={false} />
+                <XAxis dataKey="time" stroke="#064e3b" fontSize={7} tickLine={false} axisLine={false} />
+                <YAxis domain={[50, 120]} stroke="#064e3b" fontSize={7} tickLine={false} axisLine={false} tickCount={5} />
+                <ReferenceLine y={105} stroke="#ef4444" strokeDasharray="3 3" opacity={0.5} />
                 <Line type="monotone" dataKey="cht" stroke={ isOverheating ? "#ef4444" : "#10b981"} strokeWidth={2} dot={false} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
 
           <div className="flex-1 border border-emerald-900/20 bg-emerald-950/10 rounded p-2 flex flex-col">
-            <span className="text-[9px] text-emerald-600 mb-1">EXHAUST GAS TEMP (EGT) - °C</span>
+            <div className="flex justify-between mb-1">
+              <span className="text-[9px] text-emerald-600">EXHAUST GAS TEMP (°C)</span>
+              <span className="text-[7px] text-red-500/70">REDLINE: 850°C</span>
+            </div>
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={telemetryData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+              <LineChart data={telemetryData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="2 2" stroke="#064e3b" opacity={0.3} vertical={false} />
-                <XAxis dataKey="time" stroke="#064e3b" fontSize={8} tickLine={false} axisLine={false} />
-                <YAxis domain={[600, 1000]} stroke="#064e3b" fontSize={8} tickLine={false} axisLine={false} />
+                <XAxis dataKey="time" stroke="#064e3b" fontSize={7} tickLine={false} axisLine={false} />
+                <YAxis domain={[500, 900]} stroke="#064e3b" fontSize={7} tickLine={false} axisLine={false} tickCount={5} />
+                <ReferenceLine y={850} stroke="#ef4444" strokeDasharray="3 3" opacity={0.5} />
                 <Line type="monotone" dataKey="egt" stroke={isOverheating ? "#ef4444" : "#10b981"} strokeWidth={2} dot={false} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
@@ -294,10 +308,10 @@ export default function GCSDashboard() {
           <div className="flex-1 border border-emerald-900/20 bg-emerald-950/10 rounded p-2 flex flex-col">
             <span className="text-[9px] text-emerald-600 mb-1">MICRO-VIBRATION FFT (Amp / Hz)</span>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={fftData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+              <BarChart data={fftData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="2 2" stroke="#064e3b" opacity={0.3} vertical={false} />
-                <XAxis dataKey="hz" stroke="#064e3b" fontSize={8} tickLine={false} axisLine={false} />
-                <YAxis stroke="#064e3b" fontSize={8} tickLine={false} axisLine={false} />
+                <XAxis dataKey="hz" stroke="#064e3b" fontSize={7} tickLine={false} axisLine={false} />
+                <YAxis domain={[0, 100]} stroke="#064e3b" fontSize={7} tickLine={false} axisLine={false} tickCount={3} />
                 <Bar dataKey="amp" fill={ faultType === 'fracture' ? "#ef4444" : "#10b981" } isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
@@ -422,7 +436,7 @@ export default function GCSDashboard() {
                   <span className="text-[7px] block">Heat-soak cascade</span>
                 </button>
                 <button onClick={() => {setFaultType('fracture'); setAutoRotate(true);}} className={`border ${faultType === 'fracture' ? 'border-red-500 text-red-500 bg-red-950/20' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all cursor-pointer`}>
-                  <span className="text-[8px] font-bold tracking-widest block mb-1">INJECT FRACTURE</span>
+                  <span className="text-[8px] font-bold tracking-widest block mb-1">INJECT MICRO-FRACTURE</span>
                   <span className="text-[7px] block">Predictive acoustic</span>
                 </button>
                 <button onClick={() => setFaultType('jamming')} className={`border ${faultType === 'jamming' ? 'border-red-500 text-red-500 bg-red-950/20' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all cursor-pointer`}>
@@ -452,7 +466,7 @@ export default function GCSDashboard() {
               ) : faultType === 'fracture' ? (
                 <>
                   <div className="flex gap-2"><span className="text-emerald-800">16:02:45</span> <span className="text-red-500">CRITICAL: Acoustic anomaly at 4kHz.</span></div>
-                  <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-red-400">Bearing failure highly probable.</span></div>
+                  <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-red-400">Bearing micro-fracture highly probable.</span></div>
                   <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-red-500">ACTION: Throttle limit engaged. Abort.</span></div>
                 </>
               ) : faultType === 'cooling' ? (
