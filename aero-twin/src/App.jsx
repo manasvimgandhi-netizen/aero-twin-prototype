@@ -60,6 +60,16 @@ export default function GCSDashboard() {
   const [isHighAltitude, setIsHighAltitude] = useState(false);
   const [isHotWeather, setIsHotWeather] = useState(false);
   const [autoRotate, setAutoRotate] = useState(false);
+  
+  // LIVE HEARTBEAT TICKER (Makes the charts move!)
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    // Freeze the UI ticking if comms are jammed
+    if (faultType === 'jamming') return;
+    const timer = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(timer);
+  }, [faultType]);
 
   const isOverheating = faultType === 'fracture' || faultType === 'cooling';
   const isSensorFailed = faultType === 'snap';
@@ -74,19 +84,47 @@ export default function GCSDashboard() {
   if (faultType === 'cooling') { rul = "0008:00"; confidence = "32.1%"; }
   if (faultType === 'jamming') { rul = "--:--"; confidence = "--%"; }
 
-  const telemetryData = [
-    { time: 'T-5', cht: 180 + tempOffset, egt: 650 + tempOffset },
-    { time: 'T-4', cht: 182 + tempOffset, egt: 655 + tempOffset },
-    { time: 'T-3', cht: 181 + tempOffset, egt: 652 + tempOffset },
-    { time: 'T-2', cht: isSensorFailed ? 0 : (faultType === 'fracture' ? 230 : (faultType === 'cooling' ? 280 : 179)) + tempOffset, egt: faultType === 'cooling' ? 800 : (faultType === 'fracture' ? 750 : 650) + tempOffset },
-    { time: 'T-1', cht: isSensorFailed ? 0 : (faultType === 'fracture' ? 285 : (faultType === 'cooling' ? 310 : 180)) + tempOffset, egt: faultType === 'cooling' ? 920 : (faultType === 'fracture' ? 890 : 654) + tempOffset }
-  ];
+  // DYNAMIC TELEMETRY GENERATION (Scrolling Charts)
+  const telemetryData = useMemo(() => {
+    return [4, 3, 2, 1, 0].map((offset) => {
+        const time = `T-${offset}`;
+        const historicalTick = tick - offset;
+        
+        // Mathematical noise generator for realism
+        const jitter = Math.sin(historicalTick) * 1.5;
+        const egtJitter = Math.cos(historicalTick) * 3;
 
-  const fftData = [
-    { hz: '1k', amp: 20 }, { hz: '2k', amp: 35 }, { hz: '3k', amp: 15 },
-    { hz: '4k', amp: faultType === 'fracture' ? 95 : 25 }, { hz: '5k', amp: 40 },
-    { hz: '6k', amp: faultType === 'fracture' ? 80 : 30 }, { hz: '7k', amp: 10 }
-  ];
+        let chtVal = 180 + tempOffset + jitter;
+        let egtVal = 650 + tempOffset + egtJitter;
+
+        if (faultType === 'fracture') {
+            chtVal = 285 + tempOffset + jitter;
+            egtVal = 890 + tempOffset + egtJitter;
+        } else if (faultType === 'cooling') {
+            chtVal = 310 + tempOffset + (jitter * 2);
+            egtVal = 920 + tempOffset + (egtJitter * 2);
+        } else if (faultType === 'snap') {
+            chtVal = 0; // sensor snapped
+        }
+
+        return { time, cht: Math.round(chtVal), egt: Math.round(egtVal) };
+    });
+  }, [tick, faultType, tempOffset]);
+
+  // DYNAMIC FFT GENERATION (Jittering Bars)
+  const fftData = useMemo(() => {
+    const base = [20, 35, 15, 25, 40, 30, 10];
+    return base.map((amp, i) => {
+        let currentAmp = amp + (Math.random() * 4 - 2);
+        if (faultType === 'fracture' && i === 3) currentAmp = 95 + (Math.random() * 5);
+        if (faultType === 'fracture' && i === 5) currentAmp = 80 + (Math.random() * 5);
+        return { hz: `${i + 1}k`, amp: Math.max(0, currentAmp) };
+    });
+  }, [tick, faultType]);
+
+  // LIVE STATS
+  const liveRPM = isJammed ? '---' : (isOverheating ? 1840 + (tick % 4) : 2552 + (tick % 5 - 2));
+  const liveOil = isJammed ? '--' : (53.8 + Math.sin(tick) * 0.1).toFixed(1);
 
   const bellCurveData = [
     { x: 1392, y: 0.05 }, { x: 1420, y: 0.2 }, { x: 1447, y: 0.6 }, { x: 1475, y: 0.9 }, 
@@ -109,15 +147,19 @@ export default function GCSDashboard() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-emerald-500 p-4 font-mono flex flex-col uppercase selection:bg-emerald-900 overflow-hidden relative">
       
-      {/* FULL SCREEN JAMMING OVERLAY WITH EXIT BUTTON */}
+      {/* THE FIXED, UN-BLOCKABLE JAMMING OVERLAY */}
       {isJammed && (
-        <div className="absolute inset-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-md flex flex-col items-center justify-center border-8 border-red-900/50">
-          <span className="text-red-500 text-4xl font-black tracking-widest animate-pulse mb-4 text-center">SATCOM DENIAL ATTACK DETECTED</span>
-          <span className="text-slate-300 text-sm tracking-widest mb-8 text-center">GCS TELEMETRY LINK SEVERED. EDGE AUTONOMY ENGAGED.</span>
+        <div className="absolute inset-0 z-[100] bg-[#0a0a0a]/90 backdrop-blur-md flex flex-col items-center justify-center border-8 border-red-900/80 pointer-events-auto">
+          <span className="text-red-500 text-4xl font-black tracking-widest animate-pulse mb-4 text-center drop-shadow-[0_0_15px_#ef4444]">
+            SATCOM DENIAL ATTACK DETECTED
+          </span>
+          <span className="text-slate-300 text-sm tracking-widest mb-12 text-center">
+            GCS TELEMETRY LINK SEVERED. EDGE AUTONOMY ENGAGED.
+          </span>
           
           <button 
             onClick={resetSystem} 
-            className="bg-red-950/40 border border-red-500 text-red-400 hover:bg-red-900/60 hover:text-red-300 py-3 px-8 text-xs font-bold tracking-widest transition-all"
+            className="bg-red-950/80 border-2 border-red-500 text-red-100 hover:bg-red-600 hover:text-white py-4 px-10 text-sm font-bold tracking-widest transition-all shadow-[0_0_25px_#ef4444] rounded cursor-pointer"
           >
             ↻ RESTORE SATELLITE UPLINK
           </button>
@@ -135,7 +177,7 @@ export default function GCSDashboard() {
             UAV ID: <span className="text-emerald-400">TAPAS-BH-201</span> <span className="text-emerald-900 mx-2">|</span> ENG: TWIN VRDE 220HP
           </div>
           <div className="text-[9px] text-slate-600 tracking-widest mt-1">
-            DRDO / ADE / VRDE - INLINE-4 TURBO DIESEL - JET-A1 - 2543 RPM
+            DRDO / ADE / VRDE - INLINE-4 TURBO DIESEL - JET-A1 - LIVE TELEMETRY
           </div>
         </div>
 
@@ -174,7 +216,7 @@ export default function GCSDashboard() {
           </div>
           
           <div className="absolute bottom-16 left-4 z-20">
-            <button onClick={() => setAutoRotate(!autoRotate)} className="bg-emerald-950/80 hover:bg-emerald-900 text-emerald-400 py-1.5 px-3 rounded text-[8px] font-bold tracking-widest border border-emerald-800/50 transition-all backdrop-blur-sm">
+            <button onClick={() => setAutoRotate(!autoRotate)} className="bg-emerald-950/80 hover:bg-emerald-900 text-emerald-400 py-1.5 px-3 rounded text-[8px] font-bold tracking-widest border border-emerald-800/50 transition-all backdrop-blur-sm cursor-pointer">
               {autoRotate ? '■ PAUSE' : '▶ AUTO-ROTATE'}
             </button>
           </div>
@@ -196,7 +238,7 @@ export default function GCSDashboard() {
           <div className="absolute bottom-0 w-full grid grid-cols-4 border-t border-emerald-900/30 bg-[#0a0a0a] text-[9px] text-emerald-700 tracking-widest divide-x divide-emerald-900/30">
             <div className="p-2 flex flex-col gap-1">
               <span>RPM</span>
-              <span className={`text-sm font-bold ${isJammed ? 'text-slate-700' : (isOverheating ? 'text-red-500' : 'text-emerald-400')}`}>{isJammed ? '---' : (isOverheating ? '1840' : '2552')}</span>
+              <span className={`text-sm font-bold ${isJammed ? 'text-slate-700' : (isOverheating ? 'text-red-500' : 'text-emerald-400')}`}>{liveRPM}</span>
             </div>
             <div className="p-2 flex flex-col gap-1">
               <span>VIB HZ</span>
@@ -204,7 +246,7 @@ export default function GCSDashboard() {
             </div>
             <div className="p-2 flex flex-col gap-1">
               <span>OIL</span>
-              <span className={`text-sm font-bold ${isJammed ? 'text-slate-700' : 'text-emerald-400'}`}>{isJammed ? '--' : '53.8'}</span>
+              <span className={`text-sm font-bold ${isJammed ? 'text-slate-700' : 'text-emerald-400'}`}>{liveOil}</span>
             </div>
             <div className="p-2 flex flex-col gap-1">
               <span>Fe PPM</span>
@@ -215,8 +257,9 @@ export default function GCSDashboard() {
 
         {/* COL 2: Dense Telemetry with Axes */}
         <div className="col-span-3 bg-[#0d0d0d] border border-emerald-900/30 rounded p-3 h-[580px] flex flex-col gap-3 relative">
-          <div className="text-[10px] font-bold text-emerald-700 tracking-widest pb-2 border-b border-emerald-900/40">
-            LIVE EDGE TELEMETRY
+          <div className="text-[10px] font-bold text-emerald-700 tracking-widest pb-2 border-b border-emerald-900/40 flex justify-between">
+            <span>LIVE EDGE TELEMETRY</span>
+            <span className="text-emerald-900">UPDATING...</span>
           </div>
           
           <div className="flex-1 border border-emerald-900/20 bg-emerald-950/10 rounded p-2 flex flex-col relative">
@@ -255,7 +298,7 @@ export default function GCSDashboard() {
                 <CartesianGrid strokeDasharray="2 2" stroke="#064e3b" opacity={0.3} vertical={false} />
                 <XAxis dataKey="hz" stroke="#064e3b" fontSize={8} tickLine={false} axisLine={false} />
                 <YAxis stroke="#064e3b" fontSize={8} tickLine={false} axisLine={false} />
-                <Bar dataKey="amp" fill={ faultType === 'fracture' ? "#ef4444" : "#10b981" } isAnimationActive={true} />
+                <Bar dataKey="amp" fill={ faultType === 'fracture' ? "#ef4444" : "#10b981" } isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -351,14 +394,14 @@ export default function GCSDashboard() {
             
             <div className="flex flex-col gap-2 mb-3">
               <span className="text-[8px] text-emerald-800 tracking-widest uppercase">A - Meteorological Stress</span>
-              <button onClick={() => setIsHighAltitude(!isHighAltitude)} className={`border ${isHighAltitude ? 'border-emerald-500 text-emerald-400 bg-emerald-950/30' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all flex justify-between items-center`}>
+              <button onClick={() => setIsHighAltitude(!isHighAltitude)} className={`border ${isHighAltitude ? 'border-emerald-500 text-emerald-400 bg-emerald-950/30' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all flex justify-between items-center cursor-pointer`}>
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[9px] font-bold tracking-widest">HIGH ALTITUDE (15k FT)</span>
                   <span className="text-[7px] lowercase">Reduced charge density - turbo load</span>
                 </div>
                 <div className={`w-2 h-2 rounded-full ${isHighAltitude ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'border border-emerald-900/50'}`}></div>
               </button>
-              <button onClick={() => setIsHotWeather(!isHotWeather)} className={`border ${isHotWeather ? 'border-emerald-500 text-emerald-400 bg-emerald-950/30' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all flex justify-between items-center`}>
+              <button onClick={() => setIsHotWeather(!isHotWeather)} className={`border ${isHotWeather ? 'border-emerald-500 text-emerald-400 bg-emerald-950/30' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all flex justify-between items-center cursor-pointer`}>
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[9px] font-bold tracking-widest">HOT WEATHER (+45°C)</span>
                   <span className="text-[7px] lowercase">Cooling ΔT collapse - oil thinning</span>
@@ -370,26 +413,26 @@ export default function GCSDashboard() {
             <div className="flex flex-col gap-2 mb-3 flex-1">
               <span className="text-[8px] text-emerald-800 tracking-widest uppercase">B - Fault Injection Matrix</span>
               <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => {setFaultType('snap'); setAutoRotate(false);}} className={`border ${faultType === 'snap' ? 'border-yellow-500 text-yellow-500 bg-yellow-950/20' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all`}>
+                <button onClick={() => {setFaultType('snap'); setAutoRotate(false);}} className={`border ${faultType === 'snap' ? 'border-yellow-500 text-yellow-500 bg-yellow-950/20' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all cursor-pointer`}>
                   <span className="text-[8px] font-bold tracking-widest block mb-1">SNAP CHT SENSOR</span>
                   <span className="text-[7px] block">Anti-spoofing virtual</span>
                 </button>
-                <button onClick={() => {setFaultType('cooling'); setAutoRotate(true);}} className={`border ${faultType === 'cooling' ? 'border-red-500 text-red-500 bg-red-950/20' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all`}>
+                <button onClick={() => {setFaultType('cooling'); setAutoRotate(true);}} className={`border ${faultType === 'cooling' ? 'border-red-500 text-red-500 bg-red-950/20' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all cursor-pointer`}>
                   <span className="text-[8px] font-bold tracking-widest block mb-1">FAIL COOLING</span>
                   <span className="text-[7px] block">Heat-soak cascade</span>
                 </button>
-                <button onClick={() => {setFaultType('fracture'); setAutoRotate(true);}} className={`border ${faultType === 'fracture' ? 'border-red-500 text-red-500 bg-red-950/20' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all`}>
+                <button onClick={() => {setFaultType('fracture'); setAutoRotate(true);}} className={`border ${faultType === 'fracture' ? 'border-red-500 text-red-500 bg-red-950/20' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all cursor-pointer`}>
                   <span className="text-[8px] font-bold tracking-widest block mb-1">INJECT FRACTURE</span>
                   <span className="text-[7px] block">Predictive acoustic</span>
                 </button>
-                <button onClick={() => setFaultType('jamming')} className={`border ${faultType === 'jamming' ? 'border-red-500 text-red-500 bg-red-950/20' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all`}>
+                <button onClick={() => setFaultType('jamming')} className={`border ${faultType === 'jamming' ? 'border-red-500 text-red-500 bg-red-950/20' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all cursor-pointer`}>
                   <span className="text-[8px] font-bold tracking-widest block mb-1">COMMS JAMMING</span>
                   <span className="text-[7px] block">SATCOM denial</span>
                 </button>
               </div>
             </div>
 
-            <button onClick={resetSystem} className="w-full bg-emerald-950/40 border border-emerald-800 text-emerald-400 hover:bg-emerald-900/60 py-2.5 text-[10px] font-bold tracking-widest transition-all mt-auto">
+            <button onClick={resetSystem} className="w-full bg-emerald-950/40 border border-emerald-800 text-emerald-400 hover:bg-emerald-900/60 py-2.5 text-[10px] font-bold tracking-widest transition-all mt-auto cursor-pointer">
               ↻ RE-BASELINE TWIN
             </button>
           </div>
