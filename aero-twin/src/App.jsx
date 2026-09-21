@@ -109,11 +109,18 @@ export default function GCSDashboard() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-emerald-500 p-4 font-mono flex flex-col uppercase selection:bg-emerald-900 overflow-hidden relative">
       
-      {/* FULL SCREEN JAMMING OVERLAY */}
+      {/* FULL SCREEN JAMMING OVERLAY WITH EXIT BUTTON */}
       {isJammed && (
-        <div className="absolute inset-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-sm flex flex-col items-center justify-center border-8 border-red-900/50 pointer-events-none">
-          <span className="text-red-500 text-4xl font-black tracking-widest animate-pulse mb-4">SATCOM DENIAL ATTACK DETECTED</span>
-          <span className="text-slate-300 text-sm tracking-widest">GCS TELEMETRY LINK SEVERED. EDGE AUTONOMY ENGAGED.</span>
+        <div className="absolute inset-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-md flex flex-col items-center justify-center border-8 border-red-900/50">
+          <span className="text-red-500 text-4xl font-black tracking-widest animate-pulse mb-4 text-center">SATCOM DENIAL ATTACK DETECTED</span>
+          <span className="text-slate-300 text-sm tracking-widest mb-8 text-center">GCS TELEMETRY LINK SEVERED. EDGE AUTONOMY ENGAGED.</span>
+          
+          <button 
+            onClick={resetSystem} 
+            className="bg-red-950/40 border border-red-500 text-red-400 hover:bg-red-900/60 hover:text-red-300 py-3 px-8 text-xs font-bold tracking-widest transition-all"
+          >
+            ↻ RESTORE SATELLITE UPLINK
+          </button>
         </div>
       )}
 
