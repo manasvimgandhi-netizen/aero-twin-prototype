@@ -1,15 +1,16 @@
 import React, { useState, useRef, useEffect, useMemo, Suspense } from 'react';
 import * as THREE from 'three';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Environment, useGLTF, Center } from '@react-three/drei';
-import { AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
+import { OrbitControls, Environment, useGLTF, Center, Html } from '@react-three/drei';
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, CartesianGrid, ReferenceLine, Tooltip } from 'recharts';
 
-// --- 3D ENGINE MODEL ---
-function EngineModel({ faultType, autoRotate }) {
+// --- 3D ENGINE MODEL WITH HTML OVERLAYS ---
+function EngineModel({ faultType, autoRotate, tick, tempOffset }) {
   const { scene } = useGLTF('/engine.gltf');
   const modelRef = useRef();
   
   const isOverheating = faultType === 'fracture' || faultType === 'cooling';
+  const isFailed = faultType === 'snap';
 
   useMemo(() => {
     scene.traverse((child) => {
@@ -47,9 +48,59 @@ function EngineModel({ faultType, autoRotate }) {
     }
   });
 
+  // Simulated live cylinder temps for the 3D overlays
+  const cylTemp = isFailed ? 0 : Math.round((faultType === 'cooling' ? 115 : 85) + tempOffset + (Math.sin(tick) * 0.8));
+  const anomalyScore = isOverheating ? (faultType === 'fracture' ? '7.8' : '9.2') : '0.2';
+
   return (
     <Center>
-      <primitive ref={modelRef} object={scene} scale={isOverheating ? 1.02 : 1} />
+      <primitive ref={modelRef} object={scene} scale={isOverheating ? 1.02 : 1}>
+        
+        {/* CYLINDER THERMAL MARKERS */}
+        <Html position={[-0.6, 0.8, 0.2]} center className="pointer-events-none">
+          <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[8px] font-bold bg-black/60 backdrop-blur-md transition-colors ${isOverheating ? 'border-red-500 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'border-emerald-500 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]'}`}>
+            {cylTemp}
+          </div>
+        </Html>
+        <Html position={[-0.2, 0.8, 0.2]} center className="pointer-events-none">
+          <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[8px] font-bold bg-black/60 backdrop-blur-md transition-colors ${isOverheating ? 'border-red-500 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'border-emerald-500 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]'}`}>
+            {cylTemp + 1}
+          </div>
+        </Html>
+        <Html position={[0.2, 0.8, 0.2]} center className="pointer-events-none">
+          <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[8px] font-bold bg-black/60 backdrop-blur-md transition-colors ${isOverheating ? 'border-red-500 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'border-emerald-500 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]'}`}>
+            {cylTemp - 1}
+          </div>
+        </Html>
+
+        {/* TACTICAL DETAIL CARD (Matches Photo 1) */}
+        <Html position={[1.4, 0.2, 0]} center className="pointer-events-none w-48">
+          <div className="bg-[#0a0a0a]/90 border border-emerald-900/60 p-2.5 backdrop-blur-md text-left font-mono shadow-xl">
+            <div className="text-[8px] text-slate-400 mb-2 border-b border-emerald-900/40 pb-1 font-bold tracking-widest uppercase">
+              CYLINDER 3 DETAIL
+            </div>
+            <div className="flex justify-between text-[9px] mb-1 tracking-widest">
+              <span className="text-slate-500">CURRENT CHT</span>
+              <span className={`font-bold ${isOverheating ? 'text-red-500' : 'text-emerald-400'}`}>{cylTemp}°C {(isOverheating && !isFailed) ? '(CRIT)' : '(NOM)'}</span>
+            </div>
+            <div className="flex justify-between text-[9px] mb-1 tracking-widest">
+              <span className="text-slate-500">PREDICTED TREND</span>
+              <span className={isOverheating ? 'text-red-500' : 'text-emerald-400'}>{isOverheating ? '+4.2°C/hr' : '+0.2°C/hr'}</span>
+            </div>
+            <div className="flex justify-between text-[9px] mb-1 tracking-widest">
+              <span className="text-slate-500">REM. CYL LIFE</span>
+              <span className="text-emerald-400">{isOverheating ? '1,420 cyc' : '17,960 cyc'}</span>
+            </div>
+            <div className="flex justify-between text-[9px] mb-2 tracking-widest">
+              <span className="text-slate-500">AI ANOMALY SCORE</span>
+              <span className={`font-bold ${isOverheating ? 'text-red-500' : 'text-emerald-400'}`}>{anomalyScore} / 10.0</span>
+            </div>
+            <div className="text-[8px] text-slate-400 border-t border-emerald-900/40 pt-1 mt-1 leading-tight">
+              {faultType === 'cooling' ? 'Heat-soak failure mapping active.' : (faultType === 'fracture' ? 'Acoustic vibration exceeding limits.' : 'Wear trajectory on-track.')}
+            </div>
+          </div>
+        </Html>
+      </primitive>
     </Center>
   );
 }
@@ -61,7 +112,6 @@ export default function GCSDashboard() {
   const [isHotWeather, setIsHotWeather] = useState(false);
   const [autoRotate, setAutoRotate] = useState(false);
   
-  // LIVE HEARTBEAT TICKER (Forces re-renders and sliding time)
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -83,23 +133,23 @@ export default function GCSDashboard() {
   if (faultType === 'cooling') { rul = "0008:00"; confidence = "32.1%"; }
   if (faultType === 'jamming') { rul = "--:--"; confidence = "--%"; }
 
-  // FORMAT SHIFTING TIME FOR X-AXIS SCROLLING
   const formatTime = (t) => {
     const mins = Math.floor(t / 60) % 60;
     const secs = t % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // DYNAMIC TELEMETRY GENERATION (Aero-Diesel Physics)
+  // DYNAMIC 15-POINT TELEMETRY (Smooth Rolling Wave)
   const telemetryData = useMemo(() => {
-    return [4, 3, 2, 1, 0].map((offset) => {
+    return Array.from({ length: 15 }, (_, i) => {
+        const offset = 14 - i;
         const historicalTick = tick > offset ? tick - offset : 0;
         const timeLabel = formatTime(historicalTick);
         
-        const jitter = Math.sin(historicalTick) * 0.8;
-        const egtJitter = Math.cos(historicalTick) * 3;
+        // Add math random to jitter to make it look like raw sensor noise
+        const jitter = (Math.sin(historicalTick) * 0.8) + (Math.random() * 0.4 - 0.2);
+        const egtJitter = (Math.cos(historicalTick) * 3) + (Math.random() * 2 - 1);
 
-        // Base values for Liquid-Cooled Diesel
         let chtVal = 85 + tempOffset + jitter;
         let egtVal = 710 + tempOffset + egtJitter;
 
@@ -107,28 +157,26 @@ export default function GCSDashboard() {
             chtVal = 92 + tempOffset + jitter;
             egtVal = 820 + tempOffset + egtJitter;
         } else if (faultType === 'cooling') {
-            chtVal = 115 + tempOffset + (jitter * 2); // Exceeds 105C Redline
-            egtVal = 880 + tempOffset + (egtJitter * 2); // Exceeds 850C Redline
+            chtVal = 115 + tempOffset + (jitter * 2);
+            egtVal = 880 + tempOffset + (egtJitter * 2);
         } else if (faultType === 'snap') {
             chtVal = 0; 
         }
 
-        return { time: timeLabel, cht: Math.round(chtVal), egt: Math.round(egtVal) };
+        return { time: timeLabel, cht: Number(chtVal.toFixed(1)), egt: Number(egtVal.toFixed(1)) };
     });
   }, [tick, faultType, tempOffset]);
 
-  // DYNAMIC FFT GENERATION (Jittering Bars)
   const fftData = useMemo(() => {
     const base = [20, 35, 15, 25, 40, 30, 10];
     return base.map((amp, i) => {
-        let currentAmp = amp + (Math.random() * 4 - 2);
-        if (faultType === 'fracture' && i === 3) currentAmp = 95 + (Math.random() * 5); // 4kHz spike
-        if (faultType === 'fracture' && i === 5) currentAmp = 80 + (Math.random() * 5); // 6kHz harmonic
+        let currentAmp = amp + (Math.random() * 6 - 3);
+        if (faultType === 'fracture' && i === 3) currentAmp = 95 + (Math.random() * 5); 
+        if (faultType === 'fracture' && i === 5) currentAmp = 80 + (Math.random() * 5); 
         return { hz: `${i + 1}k`, amp: Math.max(0, currentAmp) };
     });
   }, [tick, faultType]);
 
-  // LIVE STATS (Aero Diesel RPM)
   const liveRPM = isJammed ? '---' : (isOverheating ? 1840 + (tick % 4) : 2552 + (tick % 5 - 2));
   const liveOil = isJammed ? '--' : (53.8 + Math.sin(tick) * 0.1).toFixed(1);
 
@@ -148,6 +196,21 @@ export default function GCSDashboard() {
   const resetSystem = () => {
     setFaultType('none');
     setAutoRotate(false); 
+  };
+
+  // Custom Tooltip for Recharts
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-[#0a0a0a]/90 border border-emerald-900/60 p-2 text-[9px] font-mono backdrop-blur-sm">
+          <p className="text-slate-400 mb-1 border-b border-emerald-900/40 pb-1">{`TIME: ${label}`}</p>
+          <p className={isOverheating ? 'text-red-400' : 'text-emerald-400'}>
+            <span className="font-bold">{payload[0].name.toUpperCase()}:</span> {payload[0].value}°C
+          </p>
+        </div>
+      );
+    }
+    return null;
   };
 
   return (
@@ -211,12 +274,11 @@ export default function GCSDashboard() {
         </div>
       </header>
 
-      {/* 4-COLUMN MAIN LAYOUT */}
       <div className="flex-1 grid grid-cols-12 gap-3 min-h-0">
         
         {/* COL 1: 3D Engine Canvas */}
         <div className="col-span-3 bg-[#0d0d0d] border border-emerald-900/30 rounded relative flex flex-col overflow-hidden h-[580px]">
-          <div className="absolute top-4 left-4 right-4 z-10 flex justify-between text-[9px] tracking-widest text-emerald-700 border-b border-emerald-900/40 pb-2 font-bold">
+          <div className="absolute top-4 left-4 right-4 z-10 flex justify-between text-[9px] tracking-widest text-emerald-700 border-b border-emerald-900/40 pb-2 font-bold bg-[#0d0d0d]/50 backdrop-blur-sm">
             <span>DIGITAL TWIN VISUALIZER</span>
             <span className={isJammed ? 'text-red-500' : 'text-emerald-500'}>{isJammed ? 'OFFLINE' : 'LIVE'}</span>
           </div>
@@ -228,15 +290,15 @@ export default function GCSDashboard() {
           </div>
 
           <div className="flex-1 w-full h-full cursor-grab active:cursor-grabbing mt-8 mb-12">
-            <Canvas camera={{ position: [0, 1.5, 4], fov: 50 }} dpr={[1, 2]}>
+            <Canvas camera={{ position: [-1.5, 1.5, 4.5], fov: 45 }} dpr={[1, 2]}>
               <ambientLight intensity={0.5} />
               <directionalLight position={[10, 10, 5]} intensity={2.5} />
               <pointLight position={[-10, -10, -5]} intensity={1} />
               <Suspense fallback={null}>
-                <EngineModel faultType={faultType} autoRotate={autoRotate} />
+                <EngineModel faultType={faultType} autoRotate={autoRotate} tick={tick} tempOffset={tempOffset} />
                 <Environment preset="city" />
               </Suspense>
-              <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
+              <OrbitControls makeDefault enableDamping dampingFactor={0.05} maxPolarAngle={Math.PI / 2 + 0.2} minDistance={2} maxDistance={8} />
             </Canvas>
           </div>
 
@@ -261,58 +323,71 @@ export default function GCSDashboard() {
           </div>
         </div>
 
-        {/* COL 2: Dense Telemetry with Axes */}
+        {/* COL 2: Upgraded Professional Analytics with Area Charts */}
         <div className="col-span-3 bg-[#0d0d0d] border border-emerald-900/30 rounded p-3 h-[580px] flex flex-col gap-3 relative">
           <div className="text-[10px] font-bold text-emerald-700 tracking-widest pb-2 border-b border-emerald-900/40 flex justify-between">
             <span>LIVE EDGE TELEMETRY</span>
-            <span className="text-emerald-900">STREAMING...</span>
+            <span className="text-emerald-900 animate-pulse">STREAMING 15-POINT BUFFER</span>
           </div>
           
-          <div className="flex-1 border border-emerald-900/20 bg-emerald-950/10 rounded p-2 flex flex-col relative">
-            <div className="flex justify-between mb-1">
-              <span className="text-[9px] text-emerald-600">COOLANT/CHT (°C)</span>
-              <span className="text-[7px] text-red-500/70">REDLINE: 105°C</span>
+          <div className="flex-1 border border-emerald-900/20 bg-emerald-950/5 rounded p-2 flex flex-col relative overflow-hidden">
+            <div className="flex justify-between mb-2">
+              <span className="text-[9px] font-bold text-emerald-600 tracking-wider">COOLANT/CHT (°C)</span>
             </div>
             {isSensorFailed && (
-              <div className="absolute inset-0 bg-[#0a0a0a]/90 flex items-center justify-center p-2 text-yellow-500 text-[10px] text-center font-bold tracking-widest z-10 border border-yellow-900/50">
+              <div className="absolute inset-0 bg-[#0a0a0a]/90 flex items-center justify-center p-2 text-yellow-500 text-[10px] text-center font-bold tracking-widest z-10 border border-yellow-900/50 backdrop-blur-sm">
                 SENSOR FAULT DETECTED (0.00°C)
               </div>
             )}
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={telemetryData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="2 2" stroke="#064e3b" opacity={0.3} vertical={false} />
-                <XAxis dataKey="time" stroke="#064e3b" fontSize={7} tickLine={false} axisLine={false} />
-                <YAxis domain={[50, 120]} stroke="#064e3b" fontSize={7} tickLine={false} axisLine={false} tickCount={5} />
-                <ReferenceLine y={105} stroke="#ef4444" strokeDasharray="3 3" opacity={0.5} />
-                <Line type="monotone" dataKey="cht" stroke={ isOverheating ? "#ef4444" : "#10b981"} strokeWidth={2} dot={false} isAnimationActive={false} />
-              </LineChart>
+              <AreaChart data={telemetryData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="chtColor" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={isOverheating ? "#ef4444" : "#10b981"} stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor={isOverheating ? "#ef4444" : "#10b981"} stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#064e3b" opacity={0.2} vertical={false} />
+                <XAxis dataKey="time" stroke="#064e3b" fontSize={7} tickLine={false} axisLine={false} minTickGap={10} />
+                <YAxis domain={[70, 130]} stroke="#064e3b" fontSize={7} tickLine={false} axisLine={false} tickCount={5} />
+                <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#064e3b', strokeWidth: 1, strokeDasharray: '3 3' }} />
+                <ReferenceLine y={105} stroke="#ef4444" strokeDasharray="4 4" opacity={0.6} label={{ position: 'insideTopLeft', value: 'REDLINE 105°C', fill: '#ef4444', fontSize: 7, offset: 5 }} />
+                <Area type="monotone" dataKey="cht" name="CHT" stroke={isOverheating ? "#ef4444" : "#10b981"} strokeWidth={2} fillOpacity={1} fill="url(#chtColor)" isAnimationActive={false} />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
 
-          <div className="flex-1 border border-emerald-900/20 bg-emerald-950/10 rounded p-2 flex flex-col">
-            <div className="flex justify-between mb-1">
-              <span className="text-[9px] text-emerald-600">EXHAUST GAS TEMP (°C)</span>
-              <span className="text-[7px] text-red-500/70">REDLINE: 850°C</span>
+          <div className="flex-1 border border-emerald-900/20 bg-emerald-950/5 rounded p-2 flex flex-col">
+            <div className="flex justify-between mb-2">
+              <span className="text-[9px] font-bold text-emerald-600 tracking-wider">EXHAUST GAS TEMP (°C)</span>
             </div>
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={telemetryData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="2 2" stroke="#064e3b" opacity={0.3} vertical={false} />
-                <XAxis dataKey="time" stroke="#064e3b" fontSize={7} tickLine={false} axisLine={false} />
-                <YAxis domain={[500, 900]} stroke="#064e3b" fontSize={7} tickLine={false} axisLine={false} tickCount={5} />
-                <ReferenceLine y={850} stroke="#ef4444" strokeDasharray="3 3" opacity={0.5} />
-                <Line type="monotone" dataKey="egt" stroke={isOverheating ? "#ef4444" : "#10b981"} strokeWidth={2} dot={false} isAnimationActive={false} />
-              </LineChart>
+              <AreaChart data={telemetryData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="egtColor" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={isOverheating ? "#ef4444" : "#10b981"} stopOpacity={0.4}/>
+                    <stop offset="95%" stopColor={isOverheating ? "#ef4444" : "#10b981"} stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#064e3b" opacity={0.2} vertical={false} />
+                <XAxis dataKey="time" stroke="#064e3b" fontSize={7} tickLine={false} axisLine={false} minTickGap={10} />
+                <YAxis domain={[650, 950]} stroke="#064e3b" fontSize={7} tickLine={false} axisLine={false} tickCount={5} />
+                <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#064e3b', strokeWidth: 1, strokeDasharray: '3 3' }} />
+                <ReferenceLine y={850} stroke="#ef4444" strokeDasharray="4 4" opacity={0.6} label={{ position: 'insideTopLeft', value: 'REDLINE 850°C', fill: '#ef4444', fontSize: 7, offset: 5 }} />
+                <Area type="monotone" dataKey="egt" name="EGT" stroke={isOverheating ? "#ef4444" : "#10b981"} strokeWidth={2} fillOpacity={1} fill="url(#egtColor)" isAnimationActive={false} />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
 
-          <div className="flex-1 border border-emerald-900/20 bg-emerald-950/10 rounded p-2 flex flex-col">
-            <span className="text-[9px] text-emerald-600 mb-1">MICRO-VIBRATION FFT (Amp / Hz)</span>
+          <div className="flex-1 border border-emerald-900/20 bg-emerald-950/5 rounded p-2 flex flex-col">
+            <span className="text-[9px] font-bold text-emerald-600 tracking-wider mb-2">MICRO-VIBRATION FFT (Amp/Hz)</span>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={fftData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="2 2" stroke="#064e3b" opacity={0.3} vertical={false} />
+              <BarChart data={fftData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#064e3b" opacity={0.2} vertical={false} />
                 <XAxis dataKey="hz" stroke="#064e3b" fontSize={7} tickLine={false} axisLine={false} />
                 <YAxis domain={[0, 100]} stroke="#064e3b" fontSize={7} tickLine={false} axisLine={false} tickCount={3} />
-                <Bar dataKey="amp" fill={ faultType === 'fracture' ? "#ef4444" : "#10b981" } isAnimationActive={false} />
+                <Tooltip cursor={{ fill: '#064e3b', opacity: 0.2 }} contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #064e3b', fontSize: '9px', color: '#10b981' }} />
+                <Bar dataKey="amp" name="Amplitude" fill={ faultType === 'fracture' ? "#ef4444" : "#10b981" } radius={[2, 2, 0, 0]} isAnimationActive={false} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -341,7 +416,7 @@ export default function GCSDashboard() {
                 <CartesianGrid strokeDasharray="2 2" stroke="#064e3b" opacity={0.3} />
                 <XAxis dataKey="x" stroke="#064e3b" fontSize={8} tickLine={false} axisLine={false} />
                 <YAxis stroke="#064e3b" fontSize={8} tickLine={false} axisLine={false} tickFormatter={(val)=>val.toFixed(1)} />
-                <Area type="monotone" dataKey="y" stroke={curveColor} strokeWidth={2} fillOpacity={1} fill="url(#colorCurve)" />
+                <Area type="monotone" dataKey="y" stroke={curveColor} strokeWidth={2} fillOpacity={1} fill="url(#colorCurve)" isAnimationActive={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -381,7 +456,7 @@ export default function GCSDashboard() {
                   <span className="font-bold">Vibration Harmonic RMS:</span> <span className={faultType === 'fracture' ? 'text-red-500 animate-pulse' : 'text-emerald-400'}>{ faultType === 'fracture' ? '+82% influence' : '+18% influence'}</span>
                 </div>
                 <div className="text-[8px] text-slate-500 leading-tight">
-                  { faultType === 'fracture' ? 'CRITICAL: 4kHz resonance detected. Bearing failure imminent.' : 'Combustion harmonics steady at 85 Hz.'}
+                  { faultType === 'fracture' ? 'CRITICAL: 4kHz resonance detected. Bearing MICRO-FRACTURE imminent.' : 'Combustion harmonics steady at 85 Hz.'}
                 </div>
               </div>
             </div>
@@ -466,7 +541,7 @@ export default function GCSDashboard() {
               ) : faultType === 'fracture' ? (
                 <>
                   <div className="flex gap-2"><span className="text-emerald-800">16:02:45</span> <span className="text-red-500">CRITICAL: Acoustic anomaly at 4kHz.</span></div>
-                  <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-red-400">Bearing micro-fracture highly probable.</span></div>
+                  <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-red-400">Bearing MICRO-FRACTURE highly probable.</span></div>
                   <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-red-500">ACTION: Throttle limit engaged. Abort.</span></div>
                 </>
               ) : faultType === 'cooling' ? (
