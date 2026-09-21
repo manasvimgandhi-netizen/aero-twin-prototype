@@ -4,9 +4,8 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Environment, useGLTF, Center } from '@react-three/drei';
 import { AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, CartesianGrid } from 'recharts';
 
-// --- 3D ENGINE MODEL (.gltf update) ---
+// --- 3D ENGINE MODEL ---
 function EngineModel({ faultType, autoRotate }) {
-  // CHANGED FROM .glb TO .gltf HERE:
   const { scene } = useGLTF('/engine.gltf');
   const modelRef = useRef();
   
@@ -112,10 +111,10 @@ export default function GCSDashboard() {
       
       {/* FULL SCREEN JAMMING OVERLAY */}
       {isJammed && (
-          <div className="absolute inset-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-sm flex flex-col items-center justify-center border-8 border-red-900/50 pointer-events-none">
-              <span className="text-red-500 text-4xl font-black tracking-widest animate-pulse mb-4">SATCOM DENIAL ATTACK DETECTED</span>
-              <span className="text-slate-300 text-sm tracking-widest">GCS TELEMETRY LINK SEVERED. EDGE AUTONOMY ENGAGED.</span>
-          </div>
+        <div className="absolute inset-0 z-50 bg-[#0a0a0a]/80 backdrop-blur-sm flex flex-col items-center justify-center border-8 border-red-900/50 pointer-events-none">
+          <span className="text-red-500 text-4xl font-black tracking-widest animate-pulse mb-4">SATCOM DENIAL ATTACK DETECTED</span>
+          <span className="text-slate-300 text-sm tracking-widest">GCS TELEMETRY LINK SEVERED. EDGE AUTONOMY ENGAGED.</span>
+        </div>
       )}
 
       {/* TOP HEADER */}
@@ -126,10 +125,10 @@ export default function GCSDashboard() {
             ATDT - AUTONOMOUS TACTICAL DIGITAL TWIN
           </div>
           <div className="text-sm font-bold tracking-widest text-slate-300">
-            UAV ID: <span className="text-emerald-400">TAPAS-BH-201</span> <span className="text-emerald-900 mx-2">|</span> ENG: TWIN CVRDE 220HP
+            UAV ID: <span className="text-emerald-400">TAPAS-BH-201</span> <span className="text-emerald-900 mx-2">|</span> ENG: TWIN VRDE 220HP
           </div>
           <div className="text-[9px] text-slate-600 tracking-widest mt-1">
-            DRDO - ADE - INLINE-4 TURBO - JET-A1 - 2543 RPM
+            DRDO / ADE / VRDE - INLINE-4 TURBO DIESEL - JET-A1 - 2543 RPM
           </div>
         </div>
 
@@ -160,14 +159,13 @@ export default function GCSDashboard() {
       {/* 4-COLUMN MAIN LAYOUT */}
       <div className="flex-1 grid grid-cols-12 gap-3 min-h-0">
         
-        {/* COL 1: 3D Engine Canvas (With Auto Rotate Back!) */}
+        {/* COL 1: 3D Engine Canvas */}
         <div className="col-span-3 bg-[#0d0d0d] border border-emerald-900/30 rounded relative flex flex-col overflow-hidden h-[580px]">
           <div className="absolute top-4 left-4 right-4 z-10 flex justify-between text-[9px] tracking-widest text-emerald-700 border-b border-emerald-900/40 pb-2 font-bold">
             <span>DIGITAL TWIN VISUALIZER</span>
             <span className={isJammed ? 'text-red-500' : 'text-emerald-500'}>{isJammed ? 'OFFLINE' : 'LIVE 1 Hz'}</span>
           </div>
           
-          {/* THE RETURN OF THE AUTO ROTATE BUTTON */}
           <div className="absolute bottom-16 left-4 z-20">
             <button onClick={() => setAutoRotate(!autoRotate)} className="bg-emerald-950/80 hover:bg-emerald-900 text-emerald-400 py-1.5 px-3 rounded text-[8px] font-bold tracking-widest border border-emerald-800/50 transition-all backdrop-blur-sm">
               {autoRotate ? '■ PAUSE' : '▶ AUTO-ROTATE'}
@@ -190,25 +188,25 @@ export default function GCSDashboard() {
           {/* Bottom Telemetry Grid */}
           <div className="absolute bottom-0 w-full grid grid-cols-4 border-t border-emerald-900/30 bg-[#0a0a0a] text-[9px] text-emerald-700 tracking-widest divide-x divide-emerald-900/30">
             <div className="p-2 flex flex-col gap-1">
-                <span>RPM</span>
-                <span className={`text-sm font-bold ${isJammed ? 'text-slate-700' : (isOverheating ? 'text-red-500' : 'text-emerald-400')}`}>{isJammed ? '---' : (isOverheating ? '1840' : '2552')}</span>
+              <span>RPM</span>
+              <span className={`text-sm font-bold ${isJammed ? 'text-slate-700' : (isOverheating ? 'text-red-500' : 'text-emerald-400')}`}>{isJammed ? '---' : (isOverheating ? '1840' : '2552')}</span>
             </div>
             <div className="p-2 flex flex-col gap-1">
-                <span>VIB HZ</span>
-                <span className={`text-sm font-bold ${isJammed ? 'text-slate-700' : (faultType === 'fracture' ? 'text-red-500' : 'text-emerald-400')}`}>{isJammed ? '---' : (faultType === 'fracture' ? '4000' : '85')}</span>
+              <span>VIB HZ</span>
+              <span className={`text-sm font-bold ${isJammed ? 'text-slate-700' : (faultType === 'fracture' ? 'text-red-500' : 'text-emerald-400')}`}>{isJammed ? '---' : (faultType === 'fracture' ? '4000' : '85')}</span>
             </div>
             <div className="p-2 flex flex-col gap-1">
-                <span>OIL</span>
-                <span className={`text-sm font-bold ${isJammed ? 'text-slate-700' : 'text-emerald-400'}`}>{isJammed ? '--' : '53.8'}</span>
+              <span>OIL</span>
+              <span className={`text-sm font-bold ${isJammed ? 'text-slate-700' : 'text-emerald-400'}`}>{isJammed ? '--' : '53.8'}</span>
             </div>
             <div className="p-2 flex flex-col gap-1">
-                <span>Fe PPM</span>
-                <span className={`text-sm font-bold ${isJammed ? 'text-slate-700' : 'text-emerald-400'}`}>{isJammed ? '--' : '11'}</span>
+              <span>Fe PPM</span>
+              <span className={`text-sm font-bold ${isJammed ? 'text-slate-700' : 'text-emerald-400'}`}>{isJammed ? '--' : '11'}</span>
             </div>
           </div>
         </div>
 
-        {/* COL 2: Dense Telemetry */}
+        {/* COL 2: Dense Telemetry with Axes */}
         <div className="col-span-3 bg-[#0d0d0d] border border-emerald-900/30 rounded p-3 h-[580px] flex flex-col gap-3 relative">
           <div className="text-[10px] font-bold text-emerald-700 tracking-widest pb-2 border-b border-emerald-900/40">
             LIVE EDGE TELEMETRY
@@ -217,9 +215,9 @@ export default function GCSDashboard() {
           <div className="flex-1 border border-emerald-900/20 bg-emerald-950/10 rounded p-2 flex flex-col relative">
             <span className="text-[9px] text-emerald-600 mb-1">CYLINDER HEAD TEMP (CHT) - °C</span>
             {isSensorFailed && (
-                <div className="absolute inset-0 bg-[#0a0a0a]/90 flex items-center justify-center p-2 text-yellow-500 text-[10px] text-center font-bold tracking-widest z-10 border border-yellow-900/50">
-                    SENSOR FAULT DETECTED (0.00°C)
-                </div>
+              <div className="absolute inset-0 bg-[#0a0a0a]/90 flex items-center justify-center p-2 text-yellow-500 text-[10px] text-center font-bold tracking-widest z-10 border border-yellow-900/50">
+                SENSOR FAULT DETECTED (0.00°C)
+              </div>
             )}
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={telemetryData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
@@ -286,16 +284,16 @@ export default function GCSDashboard() {
 
           <div className="grid grid-cols-3 gap-2 border-t border-b border-emerald-900/40 py-2 mb-4 text-[9px] tracking-widest text-emerald-700">
             <div>
-                <div className="mb-1">ESTIMATE</div>
-                <div className={(isOverheating && !isSensorFailed) ? 'text-red-500' : 'text-emerald-400'}>{rul}</div>
+              <div className="mb-1">ESTIMATE</div>
+              <div className={(isOverheating && !isSensorFailed) ? 'text-red-500' : 'text-emerald-400'}>{rul}</div>
             </div>
             <div>
-                <div className="mb-1">HORIZON</div>
-                <div className={(isOverheating && !isSensorFailed) ? 'text-red-500' : 'text-emerald-400'}>50 HR WINDOW</div>
+              <div className="mb-1">HORIZON</div>
+              <div className={(isOverheating && !isSensorFailed) ? 'text-red-500' : 'text-emerald-400'}>50 HR WINDOW</div>
             </div>
             <div>
-                <div className="mb-1">CONFIDENCE</div>
-                <div className={(isOverheating && !isSensorFailed) ? 'text-red-500' : 'text-emerald-400'}>{confidence}</div>
+              <div className="mb-1">CONFIDENCE</div>
+              <div className={(isOverheating && !isSensorFailed) ? 'text-red-500' : 'text-emerald-400'}>{confidence}</div>
             </div>
           </div>
 
@@ -307,7 +305,7 @@ export default function GCSDashboard() {
             <div className="flex gap-3">
               <div className="flex-1 flex flex-col gap-0.5 text-[9px]">
                 <div className="text-slate-300">
-                    <span className="font-bold">Oil Fe Particulate Trend:</span> <span className={isOverheating ? 'text-red-400' : 'text-emerald-400'}>+25% influence</span>
+                  <span className="font-bold">Oil Fe Particulate Trend:</span> <span className={isOverheating ? 'text-red-400' : 'text-emerald-400'}>+25% influence</span>
                 </div>
                 <div className="text-[8px] text-slate-500 leading-tight">Ferrous wear rate 0.4 ppm/hr — normal bearing bed-in.</div>
               </div>
@@ -316,10 +314,10 @@ export default function GCSDashboard() {
             <div className="flex gap-3">
               <div className="flex-1 flex flex-col gap-0.5 text-[9px]">
                 <div className="text-slate-300">
-                    <span className="font-bold">Vibration Harmonic RMS:</span> <span className={faultType === 'fracture' ? 'text-red-500 animate-pulse' : 'text-emerald-400'}>{ faultType === 'fracture' ? '+82% influence' : '+18% influence'}</span>
+                  <span className="font-bold">Vibration Harmonic RMS:</span> <span className={faultType === 'fracture' ? 'text-red-500 animate-pulse' : 'text-emerald-400'}>{ faultType === 'fracture' ? '+82% influence' : '+18% influence'}</span>
                 </div>
                 <div className="text-[8px] text-slate-500 leading-tight">
-                    { faultType === 'fracture' ? 'CRITICAL: 4kHz resonance detected. Bearing failure imminent.' : 'Combustion harmonics steady at 85 Hz.'}
+                  { faultType === 'fracture' ? 'CRITICAL: 4kHz resonance detected. Bearing failure imminent.' : 'Combustion harmonics steady at 85 Hz.'}
                 </div>
               </div>
             </div>
@@ -327,17 +325,17 @@ export default function GCSDashboard() {
             <div className="flex gap-3">
               <div className="flex-1 flex flex-col gap-0.5 text-[9px]">
                 <div className="text-slate-300">
-                    <span className="font-bold">Inter-Cyl CHT Balance:</span> <span className={faultType === 'snap' ? 'text-yellow-500' : (faultType === 'cooling' ? 'text-red-500' : 'text-emerald-400')}>{faultType === 'snap' ? '+98% ISOLATION' : (faultType === 'cooling' ? '+91% influence' : '+8% influence')}</span>
+                  <span className="font-bold">Inter-Cyl CHT Balance:</span> <span className={faultType === 'snap' ? 'text-yellow-500' : (faultType === 'cooling' ? 'text-red-500' : 'text-emerald-400')}>{faultType === 'snap' ? '+98% ISOLATION' : (faultType === 'cooling' ? '+91% influence' : '+8% influence')}</span>
                 </div>
                 <div className="text-[8px] text-slate-500 leading-tight">
-                    {faultType === 'snap' ? 'Data rejected. Reading violates EGT baseline. Virtual sensor active.' : (faultType === 'cooling' ? 'CRITICAL: Heat-soak cascade detected across cylinder block.' : 'Max spread 2°C across cylinders — balanced.')}
+                  {faultType === 'snap' ? 'Data rejected. Reading violates EGT baseline. Virtual sensor active.' : (faultType === 'cooling' ? 'CRITICAL: Heat-soak cascade detected across cylinder block.' : 'Max spread 2°C across cylinders — balanced.')}
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* COL 4: Superior GCS Control & THE RETURN OF THE EVENT LOG */}
+        {/* COL 4: GCS Control & Tactical AI Event Log */}
         <div className="col-span-3 flex flex-col gap-3 h-[580px]">
           <div className="bg-[#0d0d0d] flex-[3] rounded border border-emerald-900/30 p-4 flex flex-col">
             <div className="flex justify-between text-[9px] font-bold text-emerald-600 tracking-widest pb-2 border-b border-emerald-900/40 mb-3">
@@ -345,43 +343,43 @@ export default function GCSDashboard() {
             </div>
             
             <div className="flex flex-col gap-2 mb-3">
-                <span className="text-[8px] text-emerald-800 tracking-widest uppercase">A - Meteorological Stress</span>
-                <button onClick={() => setIsHighAltitude(!isHighAltitude)} className={`border ${isHighAltitude ? 'border-emerald-500 text-emerald-400 bg-emerald-950/30' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all flex justify-between items-center`}>
-                    <div className="flex flex-col gap-0.5">
-                        <span className="text-[9px] font-bold tracking-widest">HIGH ALTITUDE (15k FT)</span>
-                        <span className="text-[7px] lowercase">Reduced charge density - turbo load</span>
-                    </div>
-                    <div className={`w-2 h-2 rounded-full ${isHighAltitude ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'border border-emerald-900/50'}`}></div>
-                </button>
-                <button onClick={() => setIsHotWeather(!isHotWeather)} className={`border ${isHotWeather ? 'border-emerald-500 text-emerald-400 bg-emerald-950/30' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all flex justify-between items-center`}>
-                    <div className="flex flex-col gap-0.5">
-                        <span className="text-[9px] font-bold tracking-widest">HOT WEATHER (+45°C)</span>
-                        <span className="text-[7px] lowercase">Cooling ΔT collapse - oil thinning</span>
-                    </div>
-                    <div className={`w-2 h-2 rounded-full ${isHotWeather ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'border border-emerald-900/50'}`}></div>
-                </button>
+              <span className="text-[8px] text-emerald-800 tracking-widest uppercase">A - Meteorological Stress</span>
+              <button onClick={() => setIsHighAltitude(!isHighAltitude)} className={`border ${isHighAltitude ? 'border-emerald-500 text-emerald-400 bg-emerald-950/30' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all flex justify-between items-center`}>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[9px] font-bold tracking-widest">HIGH ALTITUDE (15k FT)</span>
+                  <span className="text-[7px] lowercase">Reduced charge density - turbo load</span>
+                </div>
+                <div className={`w-2 h-2 rounded-full ${isHighAltitude ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'border border-emerald-900/50'}`}></div>
+              </button>
+              <button onClick={() => setIsHotWeather(!isHotWeather)} className={`border ${isHotWeather ? 'border-emerald-500 text-emerald-400 bg-emerald-950/30' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all flex justify-between items-center`}>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[9px] font-bold tracking-widest">HOT WEATHER (+45°C)</span>
+                  <span className="text-[7px] lowercase">Cooling ΔT collapse - oil thinning</span>
+                </div>
+                <div className={`w-2 h-2 rounded-full ${isHotWeather ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'border border-emerald-900/50'}`}></div>
+              </button>
             </div>
 
             <div className="flex flex-col gap-2 mb-3 flex-1">
-                <span className="text-[8px] text-emerald-800 tracking-widest uppercase">B - Fault Injection Matrix</span>
-                <div className="grid grid-cols-2 gap-2">
-                    <button onClick={() => {setFaultType('snap'); setAutoRotate(false);}} className={`border ${faultType === 'snap' ? 'border-yellow-500 text-yellow-500 bg-yellow-950/20' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all`}>
-                        <span className="text-[8px] font-bold tracking-widest block mb-1">SNAP CHT SENSOR</span>
-                        <span className="text-[7px] block">Anti-spoofing virtual</span>
-                    </button>
-                    <button onClick={() => {setFaultType('cooling'); setAutoRotate(true);}} className={`border ${faultType === 'cooling' ? 'border-red-500 text-red-500 bg-red-950/20' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all`}>
-                        <span className="text-[8px] font-bold tracking-widest block mb-1">FAIL COOLING</span>
-                        <span className="text-[7px] block">Heat-soak cascade</span>
-                    </button>
-                    <button onClick={() => {setFaultType('fracture'); setAutoRotate(true);}} className={`border ${faultType === 'fracture' ? 'border-red-500 text-red-500 bg-red-950/20' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all`}>
-                        <span className="text-[8px] font-bold tracking-widest block mb-1">INJECT FRACTURE</span>
-                        <span className="text-[7px] block">Predictive acoustic</span>
-                    </button>
-                    <button onClick={() => setFaultType('jamming')} className={`border ${faultType === 'jamming' ? 'border-red-500 text-red-500 bg-red-950/20' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all`}>
-                        <span className="text-[8px] font-bold tracking-widest block mb-1">COMMS JAMMING</span>
-                        <span className="text-[7px] block">SATCOM denial</span>
-                    </button>
-                </div>
+              <span className="text-[8px] text-emerald-800 tracking-widest uppercase">B - Fault Injection Matrix</span>
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={() => {setFaultType('snap'); setAutoRotate(false);}} className={`border ${faultType === 'snap' ? 'border-yellow-500 text-yellow-500 bg-yellow-950/20' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all`}>
+                  <span className="text-[8px] font-bold tracking-widest block mb-1">SNAP CHT SENSOR</span>
+                  <span className="text-[7px] block">Anti-spoofing virtual</span>
+                </button>
+                <button onClick={() => {setFaultType('cooling'); setAutoRotate(true);}} className={`border ${faultType === 'cooling' ? 'border-red-500 text-red-500 bg-red-950/20' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all`}>
+                  <span className="text-[8px] font-bold tracking-widest block mb-1">FAIL COOLING</span>
+                  <span className="text-[7px] block">Heat-soak cascade</span>
+                </button>
+                <button onClick={() => {setFaultType('fracture'); setAutoRotate(true);}} className={`border ${faultType === 'fracture' ? 'border-red-500 text-red-500 bg-red-950/20' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all`}>
+                  <span className="text-[8px] font-bold tracking-widest block mb-1">INJECT FRACTURE</span>
+                  <span className="text-[7px] block">Predictive acoustic</span>
+                </button>
+                <button onClick={() => setFaultType('jamming')} className={`border ${faultType === 'jamming' ? 'border-red-500 text-red-500 bg-red-950/20' : 'border-emerald-900/30 text-emerald-700 hover:border-emerald-700 hover:text-emerald-600'} p-2 text-left transition-all`}>
+                  <span className="text-[8px] font-bold tracking-widest block mb-1">COMMS JAMMING</span>
+                  <span className="text-[7px] block">SATCOM denial</span>
+                </button>
+              </div>
             </div>
 
             <button onClick={resetSystem} className="w-full bg-emerald-950/40 border border-emerald-800 text-emerald-400 hover:bg-emerald-900/60 py-2.5 text-[10px] font-bold tracking-widest transition-all mt-auto">
@@ -389,7 +387,6 @@ export default function GCSDashboard() {
             </button>
           </div>
 
-          {/* THE RETURN OF THE TACTICAL AI EVENT LOG */}
           <div className="bg-[#0a0a0a] flex-[2] border border-emerald-900/30 rounded p-3 flex flex-col relative overflow-hidden font-mono text-[9px]">
             <div className="text-emerald-700 font-bold tracking-widest pb-2 border-b border-emerald-900/40 mb-2 flex items-center gap-2">
               <span className="text-emerald-500">&gt;_ TACTICAL AI EVENT LOG</span>
@@ -397,34 +394,34 @@ export default function GCSDashboard() {
             
             <div className="flex flex-col gap-1 overflow-y-auto text-emerald-600/80 leading-relaxed font-semibold">
               {isSensorFailed ? (
-                  <>
-                    <div className="flex gap-2"><span className="text-emerald-800">16:02:45</span> <span className="text-yellow-500">Warning: CHT Sensor signal lost (0°C).</span></div>
-                    <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-emerald-400">Initiating SHAP causal isolation...</span></div>
-                    <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-emerald-400">Physics model verified. Engine healthy.</span></div>
-                  </>
+                <>
+                  <div className="flex gap-2"><span className="text-emerald-800">16:02:45</span> <span className="text-yellow-500">Warning: CHT Sensor signal lost (0°C).</span></div>
+                  <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-emerald-400">Initiating SHAP causal isolation...</span></div>
+                  <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-emerald-400">Physics model verified. Engine healthy.</span></div>
+                </>
               ) : faultType === 'fracture' ? (
-                  <>
-                    <div className="flex gap-2"><span className="text-emerald-800">16:02:45</span> <span className="text-red-500">CRITICAL: Acoustic anomaly at 4kHz.</span></div>
-                    <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-red-400">Bearing failure highly probable.</span></div>
-                    <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-red-500">ACTION: Throttle limit engaged. Abort.</span></div>
-                  </>
+                <>
+                  <div className="flex gap-2"><span className="text-emerald-800">16:02:45</span> <span className="text-red-500">CRITICAL: Acoustic anomaly at 4kHz.</span></div>
+                  <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-red-400">Bearing failure highly probable.</span></div>
+                  <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-red-500">ACTION: Throttle limit engaged. Abort.</span></div>
+                </>
               ) : faultType === 'cooling' ? (
-                  <>
-                    <div className="flex gap-2"><span className="text-emerald-800">16:02:45</span> <span className="text-red-500">CRITICAL: Heat-soak cascade detected.</span></div>
-                    <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-red-400">EGT diverging from map baseline (+15%).</span></div>
-                    <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-red-500">ACTION: Enrich fuel mixture immediately.</span></div>
-                  </>
+                <>
+                  <div className="flex gap-2"><span className="text-emerald-800">16:02:45</span> <span className="text-red-500">CRITICAL: Heat-soak cascade detected.</span></div>
+                  <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-red-400">EGT diverging from map baseline (+15%).</span></div>
+                  <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-red-500">ACTION: Enrich fuel mixture immediately.</span></div>
+                </>
               ) : faultType === 'jamming' ? (
-                  <>
-                    <div className="flex gap-2"><span className="text-emerald-800">16:02:45</span> <span className="text-red-500">ERROR: SATCOM UPLINK SEVERED.</span></div>
-                    <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-red-500">ERROR: NO HEARTBEAT FROM EDGE NODE.</span></div>
-                  </>
+                <>
+                  <div className="flex gap-2"><span className="text-emerald-800">16:02:45</span> <span className="text-red-500">ERROR: SATCOM UPLINK SEVERED.</span></div>
+                  <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-red-500">ERROR: NO HEARTBEAT FROM EDGE NODE.</span></div>
+                </>
               ) : (
-                  <>
-                    <div className="flex gap-2"><span className="text-emerald-800">16:02:45</span> <span className="text-emerald-600">Telemetry sync established.</span></div>
-                    <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-emerald-600">Acoustic harmonics baseline OK.</span></div>
-                    <div className="flex gap-2"><span className="text-emerald-800">16:02:47</span> <span className="text-emerald-600">Ready for edge inference.</span></div>
-                  </>
+                <>
+                  <div className="flex gap-2"><span className="text-emerald-800">16:02:45</span> <span className="text-emerald-600">Telemetry sync established.</span></div>
+                  <div className="flex gap-2"><span className="text-emerald-800">16:02:46</span> <span className="text-emerald-600">Acoustic harmonics baseline OK.</span></div>
+                  <div className="flex gap-2"><span className="text-emerald-800">16:02:47</span> <span className="text-emerald-600">Ready for edge inference.</span></div>
+                </>
               )}
             </div>
           </div>
