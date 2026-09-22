@@ -13,6 +13,9 @@ function EngineModel({ faultType, autoRotate, tick, tempOffset }) {
   const isFailed = faultType === 'snap';
   const isJammed = faultType === 'jamming';
 
+  // NEW: State to track which cylinder is clicked
+  const [selectedCyl, setSelectedCyl] = useState(3);
+
   useMemo(() => {
     scene.traverse((child) => {
       if (child.isMesh) {
@@ -49,49 +52,81 @@ function EngineModel({ faultType, autoRotate, tick, tempOffset }) {
     }
   });
 
-  // Simulated live cylinder temps for the 3D overlays
-  const cylTemp = isFailed ? 0 : Math.round((faultType === 'cooling' ? 115 : 85) + tempOffset + (Math.sin(tick) * 0.8));
-  const anomalyScore = isOverheating ? (faultType === 'fracture' ? '7.8' : '9.2') : '0.2';
+  // Base cylinder temperature calculation
+  const baseCylTemp = isFailed ? 0 : Math.round((faultType === 'cooling' ? 115 : 85) + tempOffset + (Math.sin(tick) * 0.8));
+
+  // Dynamic data for each of the 4 cylinders
+  const cylData = {
+    1: { tempOffset: -1, life: '18,200', score: '0.1' },
+    2: { tempOffset: +1, life: '18,080', score: '0.2' },
+    3: { tempOffset: -2, life: '17,960', score: '0.2' },
+    4: { tempOffset: +0, life: '17,840', score: '0.3' },
+  };
+
+  if (isOverheating) {
+    cylData[1].life = '1,500'; cylData[1].score = faultType === 'fracture' ? '7.5' : '9.0';
+    cylData[2].life = '1,480'; cylData[2].score = faultType === 'fracture' ? '7.6' : '9.1';
+    cylData[3].life = '1,420'; cylData[3].score = faultType === 'fracture' ? '7.8' : '9.2';
+    cylData[4].life = '1,390'; cylData[4].score = faultType === 'fracture' ? '8.1' : '9.5';
+  }
+
+  const activeData = cylData[selectedCyl];
+  const activeTemp = isFailed ? 0 : baseCylTemp + activeData.tempOffset;
+
+  // Styling for the clickable circles
+  const getCircleStyle = (cylNum) => {
+    const isSelected = selectedCyl === cylNum;
+    const baseStyle = "w-6 h-6 rounded-full border-2 flex items-center justify-center text-[8px] font-bold bg-black/80 backdrop-blur-md transition-all cursor-pointer pointer-events-auto hover:scale-110";
+    
+    if (isOverheating) {
+      return `${baseStyle} ${isSelected ? 'border-red-400 text-red-300 scale-125 shadow-[0_0_12px_rgba(239,68,68,0.8)] z-10' : 'border-red-800 text-red-600/70 hover:border-red-500'}`;
+    }
+    return `${baseStyle} ${isSelected ? 'border-emerald-400 text-emerald-300 scale-125 shadow-[0_0_12px_rgba(16,185,129,0.8)] z-10' : 'border-emerald-800 text-emerald-600/70 hover:border-emerald-500'}`;
+  };
 
   return (
     <Center>
       <primitive ref={modelRef} object={scene} scale={isOverheating ? 1.02 : 1}>
         
-        {/* ONLY SHOW OVERLAYS IF COMM LINK IS ACTIVE */}
         {!isJammed && (
           <>
-            {/* 4 CYLINDER THERMAL MARKERS (Inline-4 Engine) */}
-            <Html position={[-0.6, 0.8, 0.2]} center className="pointer-events-none">
-              <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[8px] font-bold bg-black/60 backdrop-blur-md transition-colors ${isOverheating ? 'border-red-500 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'border-emerald-500 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]'}`}>
-                {cylTemp}
+            {/* CYLINDER 1 */}
+            <Html position={[-0.75, 0.9, 0.2]} center>
+              <div onClick={() => setSelectedCyl(1)} className={getCircleStyle(1)}>
+                {isFailed ? 0 : baseCylTemp + cylData[1].tempOffset}
               </div>
             </Html>
-            <Html position={[-0.2, 0.8, 0.2]} center className="pointer-events-none">
-              <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[8px] font-bold bg-black/60 backdrop-blur-md transition-colors ${isOverheating ? 'border-red-500 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'border-emerald-500 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]'}`}>
-                {cylTemp + 1}
+            
+            {/* CYLINDER 2 */}
+            <Html position={[-0.25, 0.9, 0.2]} center>
+              <div onClick={() => setSelectedCyl(2)} className={getCircleStyle(2)}>
+                {isFailed ? 0 : baseCylTemp + cylData[2].tempOffset}
               </div>
             </Html>
-            <Html position={[0.2, 0.8, 0.2]} center className="pointer-events-none">
-              <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[8px] font-bold bg-black/60 backdrop-blur-md transition-colors ${isOverheating ? 'border-red-500 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'border-emerald-500 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]'}`}>
-                {cylTemp - 1}
+            
+            {/* CYLINDER 3 */}
+            <Html position={[0.25, 0.9, 0.2]} center>
+              <div onClick={() => setSelectedCyl(3)} className={getCircleStyle(3)}>
+                {isFailed ? 0 : baseCylTemp + cylData[3].tempOffset}
               </div>
             </Html>
-            {/* Added 4th Cylinder Tracker */}
-            <Html position={[0.6, 0.8, 0.2]} center className="pointer-events-none">
-              <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[8px] font-bold bg-black/60 backdrop-blur-md transition-colors ${isOverheating ? 'border-red-500 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'border-emerald-500 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]'}`}>
-                {cylTemp + 2}
+            
+            {/* CYLINDER 4 */}
+            <Html position={[0.75, 0.9, 0.2]} center>
+              <div onClick={() => setSelectedCyl(4)} className={getCircleStyle(4)}>
+                {isFailed ? 0 : baseCylTemp + cylData[4].tempOffset}
               </div>
             </Html>
 
-            {/* TACTICAL DETAIL CARD */}
+            {/* DYNAMIC TACTICAL DETAIL CARD */}
             <Html position={[1.4, 0.2, 0]} center className="pointer-events-none w-48">
-              <div className="bg-[#0a0a0a]/90 border border-emerald-900/60 p-2.5 backdrop-blur-md text-left font-mono shadow-xl">
+              <div className="bg-[#0a0a0a]/90 border border-emerald-900/60 p-2.5 backdrop-blur-md text-left font-mono shadow-xl transition-all">
                 <div className="text-[8px] text-slate-400 mb-2 border-b border-emerald-900/40 pb-1 font-bold tracking-widest uppercase">
-                  CYLINDER 3 DETAIL
+                  CYLINDER {selectedCyl} DETAIL
                 </div>
                 <div className="flex justify-between text-[9px] mb-1 tracking-widest">
                   <span className="text-slate-500">CURRENT CHT</span>
-                  <span className={`font-bold ${isOverheating ? 'text-red-500' : 'text-emerald-400'}`}>{cylTemp}°C {(isOverheating && !isFailed) ? '(CRIT)' : '(NOM)'}</span>
+                  <span className={`font-bold ${isOverheating ? 'text-red-500' : 'text-emerald-400'}`}>{activeTemp}°C {(isOverheating && !isFailed) ? '(CRIT)' : '(NOM)'}</span>
                 </div>
                 <div className="flex justify-between text-[9px] mb-1 tracking-widest">
                   <span className="text-slate-500">PREDICTED TREND</span>
@@ -99,14 +134,14 @@ function EngineModel({ faultType, autoRotate, tick, tempOffset }) {
                 </div>
                 <div className="flex justify-between text-[9px] mb-1 tracking-widest">
                   <span className="text-slate-500">REM. CYL LIFE</span>
-                  <span className="text-emerald-400">{isOverheating ? '1,420 cyc' : '17,960 cyc'}</span>
+                  <span className="text-emerald-400">{activeData.life} cycles</span>
                 </div>
                 <div className="flex justify-between text-[9px] mb-2 tracking-widest">
                   <span className="text-slate-500">AI ANOMALY SCORE</span>
-                  <span className={`font-bold ${isOverheating ? 'text-red-500' : 'text-emerald-400'}`}>{anomalyScore} / 10.0</span>
+                  <span className={`font-bold ${isOverheating ? 'text-red-500' : 'text-emerald-400'}`}>{activeData.score} / 10.0</span>
                 </div>
                 <div className="text-[8px] text-slate-400 border-t border-emerald-900/40 pt-1 mt-1 leading-tight">
-                  {faultType === 'cooling' ? 'Heat-soak failure mapping active.' : (faultType === 'fracture' ? 'Acoustic vibration exceeding limits.' : 'Wear trajectory on-track.')}
+                  {faultType === 'cooling' ? `Heat-soak cascade tracking on Cyl ${selectedCyl}.` : (faultType === 'fracture' ? `Acoustic vibration exceeding limits on Cyl ${selectedCyl}.` : `Wear trajectory for Cyl ${selectedCyl} on-track.`)}
                 </div>
               </div>
             </Html>
@@ -158,7 +193,6 @@ export default function GCSDashboard() {
         const historicalTick = tick > offset ? tick - offset : 0;
         const timeLabel = formatTime(historicalTick);
         
-        // Add math random to jitter to make it look like raw sensor noise
         const jitter = (Math.sin(historicalTick) * 0.8) + (Math.random() * 0.4 - 0.2);
         const egtJitter = (Math.cos(historicalTick) * 3) + (Math.random() * 2 - 1);
 
