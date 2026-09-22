@@ -11,6 +11,7 @@ function EngineModel({ faultType, autoRotate, tick, tempOffset }) {
   
   const isOverheating = faultType === 'fracture' || faultType === 'cooling';
   const isFailed = faultType === 'snap';
+  const isJammed = faultType === 'jamming';
 
   useMemo(() => {
     scene.traverse((child) => {
@@ -56,50 +57,55 @@ function EngineModel({ faultType, autoRotate, tick, tempOffset }) {
     <Center>
       <primitive ref={modelRef} object={scene} scale={isOverheating ? 1.02 : 1}>
         
-        {/* CYLINDER THERMAL MARKERS */}
-        <Html position={[-0.6, 0.8, 0.2]} center className="pointer-events-none">
-          <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[8px] font-bold bg-black/60 backdrop-blur-md transition-colors ${isOverheating ? 'border-red-500 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'border-emerald-500 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]'}`}>
-            {cylTemp}
-          </div>
-        </Html>
-        <Html position={[-0.2, 0.8, 0.2]} center className="pointer-events-none">
-          <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[8px] font-bold bg-black/60 backdrop-blur-md transition-colors ${isOverheating ? 'border-red-500 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'border-emerald-500 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]'}`}>
-            {cylTemp + 1}
-          </div>
-        </Html>
-        <Html position={[0.2, 0.8, 0.2]} center className="pointer-events-none">
-          <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[8px] font-bold bg-black/60 backdrop-blur-md transition-colors ${isOverheating ? 'border-red-500 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'border-emerald-500 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]'}`}>
-            {cylTemp - 1}
-          </div>
-        </Html>
+        {/* ONLY SHOW OVERLAYS IF COMM LINK IS ACTIVE */}
+        {!isJammed && (
+          <>
+            {/* CYLINDER THERMAL MARKERS */}
+            <Html position={[-0.6, 0.8, 0.2]} center className="pointer-events-none">
+              <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[8px] font-bold bg-black/60 backdrop-blur-md transition-colors ${isOverheating ? 'border-red-500 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'border-emerald-500 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]'}`}>
+                {cylTemp}
+              </div>
+            </Html>
+            <Html position={[-0.2, 0.8, 0.2]} center className="pointer-events-none">
+              <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[8px] font-bold bg-black/60 backdrop-blur-md transition-colors ${isOverheating ? 'border-red-500 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'border-emerald-500 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]'}`}>
+                {cylTemp + 1}
+              </div>
+            </Html>
+            <Html position={[0.2, 0.8, 0.2]} center className="pointer-events-none">
+              <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[8px] font-bold bg-black/60 backdrop-blur-md transition-colors ${isOverheating ? 'border-red-500 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'border-emerald-500 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]'}`}>
+                {cylTemp - 1}
+              </div>
+            </Html>
 
-        {/* TACTICAL DETAIL CARD (Matches Photo 1) */}
-        <Html position={[1.4, 0.2, 0]} center className="pointer-events-none w-48">
-          <div className="bg-[#0a0a0a]/90 border border-emerald-900/60 p-2.5 backdrop-blur-md text-left font-mono shadow-xl">
-            <div className="text-[8px] text-slate-400 mb-2 border-b border-emerald-900/40 pb-1 font-bold tracking-widest uppercase">
-              CYLINDER 3 DETAIL
-            </div>
-            <div className="flex justify-between text-[9px] mb-1 tracking-widest">
-              <span className="text-slate-500">CURRENT CHT</span>
-              <span className={`font-bold ${isOverheating ? 'text-red-500' : 'text-emerald-400'}`}>{cylTemp}°C {(isOverheating && !isFailed) ? '(CRIT)' : '(NOM)'}</span>
-            </div>
-            <div className="flex justify-between text-[9px] mb-1 tracking-widest">
-              <span className="text-slate-500">PREDICTED TREND</span>
-              <span className={isOverheating ? 'text-red-500' : 'text-emerald-400'}>{isOverheating ? '+4.2°C/hr' : '+0.2°C/hr'}</span>
-            </div>
-            <div className="flex justify-between text-[9px] mb-1 tracking-widest">
-              <span className="text-slate-500">REM. CYL LIFE</span>
-              <span className="text-emerald-400">{isOverheating ? '1,420 cyc' : '17,960 cyc'}</span>
-            </div>
-            <div className="flex justify-between text-[9px] mb-2 tracking-widest">
-              <span className="text-slate-500">AI ANOMALY SCORE</span>
-              <span className={`font-bold ${isOverheating ? 'text-red-500' : 'text-emerald-400'}`}>{anomalyScore} / 10.0</span>
-            </div>
-            <div className="text-[8px] text-slate-400 border-t border-emerald-900/40 pt-1 mt-1 leading-tight">
-              {faultType === 'cooling' ? 'Heat-soak failure mapping active.' : (faultType === 'fracture' ? 'Acoustic vibration exceeding limits.' : 'Wear trajectory on-track.')}
-            </div>
-          </div>
-        </Html>
+            {/* TACTICAL DETAIL CARD */}
+            <Html position={[1.4, 0.2, 0]} center className="pointer-events-none w-48">
+              <div className="bg-[#0a0a0a]/90 border border-emerald-900/60 p-2.5 backdrop-blur-md text-left font-mono shadow-xl">
+                <div className="text-[8px] text-slate-400 mb-2 border-b border-emerald-900/40 pb-1 font-bold tracking-widest uppercase">
+                  CYLINDER 3 DETAIL
+                </div>
+                <div className="flex justify-between text-[9px] mb-1 tracking-widest">
+                  <span className="text-slate-500">CURRENT CHT</span>
+                  <span className={`font-bold ${isOverheating ? 'text-red-500' : 'text-emerald-400'}`}>{cylTemp}°C {(isOverheating && !isFailed) ? '(CRIT)' : '(NOM)'}</span>
+                </div>
+                <div className="flex justify-between text-[9px] mb-1 tracking-widest">
+                  <span className="text-slate-500">PREDICTED TREND</span>
+                  <span className={isOverheating ? 'text-red-500' : 'text-emerald-400'}>{isOverheating ? '+4.2°C/hr' : '+0.2°C/hr'}</span>
+                </div>
+                <div className="flex justify-between text-[9px] mb-1 tracking-widest">
+                  <span className="text-slate-500">REM. CYL LIFE</span>
+                  <span className="text-emerald-400">{isOverheating ? '1,420 cyc' : '17,960 cyc'}</span>
+                </div>
+                <div className="flex justify-between text-[9px] mb-2 tracking-widest">
+                  <span className="text-slate-500">AI ANOMALY SCORE</span>
+                  <span className={`font-bold ${isOverheating ? 'text-red-500' : 'text-emerald-400'}`}>{anomalyScore} / 10.0</span>
+                </div>
+                <div className="text-[8px] text-slate-400 border-t border-emerald-900/40 pt-1 mt-1 leading-tight">
+                  {faultType === 'cooling' ? 'Heat-soak failure mapping active.' : (faultType === 'fracture' ? 'Acoustic vibration exceeding limits.' : 'Wear trajectory on-track.')}
+                </div>
+              </div>
+            </Html>
+          </>
+        )}
       </primitive>
     </Center>
   );
