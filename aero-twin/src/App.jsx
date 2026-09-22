@@ -60,7 +60,7 @@ function EngineModel({ faultType, autoRotate, tick, tempOffset }) {
         {/* ONLY SHOW OVERLAYS IF COMM LINK IS ACTIVE */}
         {!isJammed && (
           <>
-            {/* CYLINDER THERMAL MARKERS */}
+            {/* 4 CYLINDER THERMAL MARKERS (Inline-4 Engine) */}
             <Html position={[-0.6, 0.8, 0.2]} center className="pointer-events-none">
               <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[8px] font-bold bg-black/60 backdrop-blur-md transition-colors ${isOverheating ? 'border-red-500 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'border-emerald-500 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]'}`}>
                 {cylTemp}
@@ -74,6 +74,12 @@ function EngineModel({ faultType, autoRotate, tick, tempOffset }) {
             <Html position={[0.2, 0.8, 0.2]} center className="pointer-events-none">
               <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[8px] font-bold bg-black/60 backdrop-blur-md transition-colors ${isOverheating ? 'border-red-500 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'border-emerald-500 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]'}`}>
                 {cylTemp - 1}
+              </div>
+            </Html>
+            {/* Added 4th Cylinder Tracker */}
+            <Html position={[0.6, 0.8, 0.2]} center className="pointer-events-none">
+              <div className={`w-6 h-6 rounded-full border flex items-center justify-center text-[8px] font-bold bg-black/60 backdrop-blur-md transition-colors ${isOverheating ? 'border-red-500 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.5)]' : 'border-emerald-500 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]'}`}>
+                {cylTemp + 2}
               </div>
             </Html>
 
@@ -249,10 +255,10 @@ export default function GCSDashboard() {
             ATDT - AUTONOMOUS TACTICAL DIGITAL TWIN
           </div>
           <div className="text-sm font-bold tracking-widest text-slate-300">
-            UAV ID: <span className="text-emerald-400">TAPAS-BH-201</span> <span className="text-emerald-900 mx-2">|</span> ENG: TWIN VRDE 220HP
+            UAV ID: <span className="text-emerald-400">TAPAS-BH-201</span> <span className="text-emerald-900 mx-2">|</span> ENG: TWIN VRDE 2.2L 220HP
           </div>
           <div className="text-[9px] text-slate-600 tracking-widest mt-1">
-            DRDO / ADE / VRDE - INLINE-4 TURBO DIESEL - JET-A1 - LIVE TELEMETRY
+            DRDO / VRDE - INLINE-4 TURBO CRDi DIESEL - JET-A1
           </div>
         </div>
 
