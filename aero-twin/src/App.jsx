@@ -13,7 +13,6 @@ function EngineModel({ faultType, autoRotate, tick, tempOffset }) {
   const isFailed = faultType === 'snap';
   const isJammed = faultType === 'jamming';
 
-  // NEW: State to track which cylinder is clicked
   const [selectedCyl, setSelectedCyl] = useState(3);
 
   useMemo(() => {
@@ -52,10 +51,8 @@ function EngineModel({ faultType, autoRotate, tick, tempOffset }) {
     }
   });
 
-  // Base cylinder temperature calculation
   const baseCylTemp = isFailed ? 0 : Math.round((faultType === 'cooling' ? 115 : 85) + tempOffset + (Math.sin(tick) * 0.8));
 
-  // Dynamic data for each of the 4 cylinders
   const cylData = {
     1: { tempOffset: -1, life: '18,200', score: '0.1' },
     2: { tempOffset: +1, life: '18,080', score: '0.2' },
@@ -73,15 +70,20 @@ function EngineModel({ faultType, autoRotate, tick, tempOffset }) {
   const activeData = cylData[selectedCyl];
   const activeTemp = isFailed ? 0 : baseCylTemp + activeData.tempOffset;
 
-  // Styling for the clickable circles
   const getCircleStyle = (cylNum) => {
     const isSelected = selectedCyl === cylNum;
-    const baseStyle = "w-6 h-6 rounded-full border-2 flex items-center justify-center text-[8px] font-bold bg-black/80 backdrop-blur-md transition-all cursor-pointer pointer-events-auto hover:scale-110";
+    const baseStyle = "w-7 h-7 rounded-full border-2 flex items-center justify-center text-[9px] font-bold bg-black/80 backdrop-blur-md transition-all cursor-pointer pointer-events-auto hover:scale-110";
     
     if (isOverheating) {
       return `${baseStyle} ${isSelected ? 'border-red-400 text-red-300 scale-125 shadow-[0_0_12px_rgba(239,68,68,0.8)] z-10' : 'border-red-800 text-red-600/70 hover:border-red-500'}`;
     }
     return `${baseStyle} ${isSelected ? 'border-emerald-400 text-emerald-300 scale-125 shadow-[0_0_12px_rgba(16,185,129,0.8)] z-10' : 'border-emerald-800 text-emerald-600/70 hover:border-emerald-500'}`;
+  };
+
+  // Click handler that stops the 3D model from rotating when you click the button
+  const handleCylClick = (e, cylNum) => {
+    e.stopPropagation();
+    setSelectedCyl(cylNum);
   };
 
   return (
@@ -90,36 +92,36 @@ function EngineModel({ faultType, autoRotate, tick, tempOffset }) {
         
         {!isJammed && (
           <>
-            {/* CYLINDER 1 */}
-            <Html position={[-0.75, 0.9, 0.2]} center>
-              <div onClick={() => setSelectedCyl(1)} className={getCircleStyle(1)}>
+            {/* CYLINDER 1 - Front Left */}
+            <Html position={[-0.7, 1.1, 0.3]} center zIndexRange={[100, 0]}>
+              <div onPointerDown={(e) => handleCylClick(e, 1)} className={getCircleStyle(1)}>
                 {isFailed ? 0 : baseCylTemp + cylData[1].tempOffset}
               </div>
             </Html>
             
-            {/* CYLINDER 2 */}
-            <Html position={[-0.25, 0.9, 0.2]} center>
-              <div onClick={() => setSelectedCyl(2)} className={getCircleStyle(2)}>
+            {/* CYLINDER 2 - Mid Left (Slightly higher) */}
+            <Html position={[-0.25, 1.25, 0.2]} center zIndexRange={[100, 0]}>
+              <div onPointerDown={(e) => handleCylClick(e, 2)} className={getCircleStyle(2)}>
                 {isFailed ? 0 : baseCylTemp + cylData[2].tempOffset}
               </div>
             </Html>
             
-            {/* CYLINDER 3 */}
-            <Html position={[0.25, 0.9, 0.2]} center>
-              <div onClick={() => setSelectedCyl(3)} className={getCircleStyle(3)}>
+            {/* CYLINDER 3 - Mid Right (Slightly higher) */}
+            <Html position={[0.2, 1.25, 0.1]} center zIndexRange={[100, 0]}>
+              <div onPointerDown={(e) => handleCylClick(e, 3)} className={getCircleStyle(3)}>
                 {isFailed ? 0 : baseCylTemp + cylData[3].tempOffset}
               </div>
             </Html>
             
-            {/* CYLINDER 4 */}
-            <Html position={[0.75, 0.9, 0.2]} center>
-              <div onClick={() => setSelectedCyl(4)} className={getCircleStyle(4)}>
+            {/* CYLINDER 4 - Back Right */}
+            <Html position={[0.65, 1.1, 0.05]} center zIndexRange={[100, 0]}>
+              <div onPointerDown={(e) => handleCylClick(e, 4)} className={getCircleStyle(4)}>
                 {isFailed ? 0 : baseCylTemp + cylData[4].tempOffset}
               </div>
             </Html>
 
-            {/* DYNAMIC TACTICAL DETAIL CARD */}
-            <Html position={[1.4, 0.2, 0]} center className="pointer-events-none w-48">
+            {/* DYNAMIC TACTICAL DETAIL CARD (Kept pointer-events-none so it doesn't block rotation) */}
+            <Html position={[1.5, 0.2, 0]} center className="pointer-events-none w-48" zIndexRange={[90, 0]}>
               <div className="bg-[#0a0a0a]/90 border border-emerald-900/60 p-2.5 backdrop-blur-md text-left font-mono shadow-xl transition-all">
                 <div className="text-[8px] text-slate-400 mb-2 border-b border-emerald-900/40 pb-1 font-bold tracking-widest uppercase">
                   CYLINDER {selectedCyl} DETAIL
@@ -134,7 +136,7 @@ function EngineModel({ faultType, autoRotate, tick, tempOffset }) {
                 </div>
                 <div className="flex justify-between text-[9px] mb-1 tracking-widest">
                   <span className="text-slate-500">REM. CYL LIFE</span>
-                  <span className="text-emerald-400">{activeData.life} cycles</span>
+                  <span className="text-emerald-400">{activeData.life} cyc</span>
                 </div>
                 <div className="flex justify-between text-[9px] mb-2 tracking-widest">
                   <span className="text-slate-500">AI ANOMALY SCORE</span>
@@ -186,7 +188,6 @@ export default function GCSDashboard() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // DYNAMIC 15-POINT TELEMETRY (Smooth Rolling Wave)
   const telemetryData = useMemo(() => {
     return Array.from({ length: 15 }, (_, i) => {
         const offset = 14 - i;
@@ -244,7 +245,6 @@ export default function GCSDashboard() {
     setAutoRotate(false); 
   };
 
-  // Custom Tooltip for Recharts
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
@@ -262,7 +262,7 @@ export default function GCSDashboard() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-emerald-500 p-4 font-mono flex flex-col uppercase selection:bg-emerald-900 overflow-hidden relative">
       
-      {/* FIXED JAMMING OVERLAY WITH RESTART BUTTON */}
+      {/* FIXED JAMMING OVERLAY */}
       {isJammed && (
         <div className="absolute inset-0 z-[100] bg-[#0a0a0a]/90 backdrop-blur-md flex flex-col items-center justify-center border-8 border-red-900/80 pointer-events-auto">
           <span className="text-red-500 text-4xl font-black tracking-widest animate-pulse mb-4 text-center drop-shadow-[0_0_15px_#ef4444]">
@@ -271,11 +271,7 @@ export default function GCSDashboard() {
           <span className="text-slate-300 text-sm tracking-widest mb-12 text-center">
             GCS TELEMETRY LINK SEVERED. EDGE AUTONOMY ENGAGED. LOGGING BUFFERED.
           </span>
-          
-          <button 
-            onClick={resetSystem} 
-            className="bg-red-950/80 border-2 border-red-500 text-red-100 hover:bg-red-600 hover:text-white py-4 px-10 text-sm font-bold tracking-widest transition-all shadow-[0_0_25px_#ef4444] rounded cursor-pointer"
-          >
+          <button onClick={resetSystem} className="bg-red-950/80 border-2 border-red-500 text-red-100 hover:bg-red-600 hover:text-white py-4 px-10 text-sm font-bold tracking-widest transition-all shadow-[0_0_25px_#ef4444] rounded cursor-pointer">
             ↻ RESTORE SATELLITE UPLINK & RE-SYNC
           </button>
         </div>
@@ -369,7 +365,7 @@ export default function GCSDashboard() {
           </div>
         </div>
 
-        {/* COL 2: Upgraded Professional Analytics with Area Charts */}
+        {/* COL 2: Analytics */}
         <div className="col-span-3 bg-[#0d0d0d] border border-emerald-900/30 rounded p-3 h-[580px] flex flex-col gap-3 relative">
           <div className="text-[10px] font-bold text-emerald-700 tracking-widest pb-2 border-b border-emerald-900/40 flex justify-between">
             <span>LIVE EDGE TELEMETRY</span>
@@ -439,7 +435,7 @@ export default function GCSDashboard() {
           </div>
         </div>
 
-        {/* COL 3: Data Analysis (Detailed XAI) */}
+        {/* COL 3: Data Analysis */}
         <div className="col-span-3 bg-[#0d0d0d] border border-emerald-900/30 rounded p-4 h-[580px] flex flex-col">
           <div className="text-[10px] font-bold text-emerald-500 tracking-widest pb-2 border-b border-emerald-900/40 mb-4 text-center">
             PREDICTION ANALYSIS
